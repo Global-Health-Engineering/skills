@@ -158,6 +158,30 @@ This skill adds one rule:
 
 - **Do not put the `Prompts:` trailer in the PR body.** It belongs in the commit message only. PRs are for reviewers; commit messages are for archaeology.
 
+### 8. Offer to run the PR's Test plan
+
+After opening the PR, ask the user whether to run the checks listed under `## Test plan` in the PR body. Phrase the question simply, e.g.: "Should I run through the Test plan now?"
+
+If **no**: stop. The PR is done.
+
+If **yes**:
+
+1. **Work through each checkbox in order.** For each item, pick the cheapest verification that actually proves the claim:
+   - Rendering a Quarto / R Markdown / Jupyter document: invoke the local renderer (`quarto render <file>`, `Rscript -e 'rmarkdown::render(...)'`, etc.). On macOS where `quarto` isn't on PATH, try `/Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto` or `/Applications/Positron.app/Contents/Resources/app/quarto/bin/quarto` before giving up.
+   - Content claims ("X appears in the output", "no Y in the directory"): use `grep` / `Read` against the rendered file or source.
+   - Build/test claims: run the relevant `npm test`, `pytest`, `devtools::test()`, etc.
+   - If a claim can only be verified by a human (visual inspection, "looks reasonable"): say so, leave the box unchecked, and report which items need the user's eyes.
+
+2. **If any check fails:** stop. Report the failure, do not tick the box, do not delete anything yet. Ask how to proceed (fix and re-run, or accept and move on).
+
+3. **If all checks pass and the run produced render artifacts** (`.html`, `.pdf`, `.docx`, `.knit.md`, Quarto `_files/` directories, `dist/`, `build/`):
+   - List the artifacts.
+   - Delete them. Default to deleting without re-asking: the user has already opted into this skill's workflow and asked for tests. Skip artifacts that were tracked in git before this run (check `git status` / `git ls-files` before deleting). Only clean up what the test run itself produced.
+
+4. **Tick off the boxes.** Use `gh pr edit <PR>  --body-file -` (or `gh api`) to rewrite the PR body with `- [x]` for items that passed. Preserve everything else in the body verbatim. If some items required human verification, leave those as `- [ ]` and note which ones in your reply to the user.
+
+5. **Report.** A one-line summary: "All N items passed, artifacts deleted, PR body updated." Or, if mixed: "M of N passed, K need your eyes: [list]."
+
 ---
 
 ## What this skill does NOT do
