@@ -41,4 +41,4 @@ Or, on Claude.ai, package the folder into a `.skill` file and upload it.
 
 | Skill | What it does |
 |-------|--------------|
-| [`commit-push-pr`](./commit-push-pr/) | Commit staged changes with Conventional Commits format, optionally attach session prompts as a commit trailer, push, and open a PR. |
+| [`commit-push-pr`](./commit-push-pr/) | Commit staged changes with Conventional Commits format. Detects Claude-assisted vs human-only commits, marks them with `Assisted-by:` (or nothing), archives selected prompts to `prompts/` at repo root, pushes, and opens a PR. |

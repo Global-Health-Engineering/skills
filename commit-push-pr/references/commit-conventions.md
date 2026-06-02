@@ -87,14 +87,43 @@ Common trailers:
 
 - `Closes #123`: closes the referenced issue on merge.
 - `Refs #123`: references but doesn't close.
-- `Co-Authored-By: Name <email>`: adds a collaborator (GitHub recognizes this). The harness adds `Co-Authored-By: Claude ... <noreply@anthropic.com>` by default; keep it unless the user explicitly opts out.
+- `Assisted-by: Claude <model-id>`: marks a Claude-assisted commit. This skill uses this trailer instead of the harness default `Co-Authored-By: Claude ...`. See the "Authorship attribution" section below.
+- `Co-Authored-By: Name <email>`: adds a human collaborator (GitHub recognizes this). Use only for actual human co-authors. Do NOT use for Claude.
 - `Signed-off-by: Name <email>`: DCO sign-off.
 - `Reverts: <sha>`: for revert commits.
-- `Prompts:`: custom trailer used by this skill for prompt attachment (see `examples.md`).
+- `Prompts:`: custom trailer used by this skill to reference archived prompt IDs (see `examples.md`). Body of each ID points to a file under `prompts/` in the repo.
 
 Each trailer on its own line. The block is separated from the body by a blank line.
 
-Ordering convention used by this skill: `Prompts:` first (it's content-like), then issue references (`Closes`, `Refs`), then identity trailers (`Co-Authored-By`, `Signed-off-by`).
+Ordering convention used by this skill, top to bottom:
+
+1. `Prompts:` (content-like, references in-repo archive files).
+2. Issue references (`Closes`, `Refs`).
+3. Identity trailers (`Co-Authored-By` for humans, `Signed-off-by`).
+4. `Assisted-by:` (last, so it sits as the bottom-line attribution).
+
+## Authorship attribution
+
+This skill distinguishes two kinds of commit:
+
+- **Claude-assisted.** Claude wrote or substantially edited the change. Commit gets an `Assisted-by: Claude <model-id>` trailer (e.g. `Assisted-by: Claude claude-opus-4-7`). The `model-id` should be the lowercased model name from the current environment, no friendly name.
+- **Human-only.** The human authored the change without Claude's involvement (typo fix, hand revision in editor, manual refactor). Commit gets no `Assisted-by:` trailer, no `Co-Authored-By: Claude`, no `Prompts:` trailer.
+
+**Absence is the signal.** Querying the log:
+
+- `git log --grep='^Assisted-by:'` lists Claude-assisted commits.
+- `git log --invert-grep --grep='^Assisted-by:'` lists human-only commits.
+
+### Why `Assisted-by:` instead of `Co-Authored-By:`?
+
+The harness's default `Co-Authored-By: Claude ... <noreply@anthropic.com>` has two problems for projects that need an honest authorship record:
+
+1. It implies legal co-authorship (the GitHub UI treats `Co-Authored-By` as a contributor). Several journal publishers (COPE, Nature, Elsevier, JOSS) have flagged this as inappropriate for LLMs, since an LLM cannot accept responsibility for a contribution.
+2. It fires on every commit Claude Code makes, so it cannot distinguish "Claude wrote this" from "Claude ran `git commit` on the human's behalf". As a marker of actual Claude authorship, it is noise.
+
+`Assisted-by:` is an emerging community standard (used in guidelines from the Linux Kernel, Apache, LLVM, Fedora, OpenInfra, OpenTelemetry) for the case where an AI agent contributed to a change but is not a legal author. It is the right semantic fit and queryable in `git log`.
+
+The harness still adds `Co-Authored-By: Claude` by default; this skill overrides that by emitting its own trailer block. If you see `Co-Authored-By: Claude` in a commit made through this skill, it is a bug.
 
 ## Splitting commits
 

@@ -1,10 +1,12 @@
 # Examples
 
-Worked examples of commit messages produced by `commit-push-pr`, with and without the prompt trailer.
+Worked examples of commits produced by `commit-push-pr`, covering both paths (Claude-assisted and human-only) and showing the `prompts/` archive file alongside the commit message where relevant.
 
-The harness adds a `Co-Authored-By: Claude ... <noreply@anthropic.com>` trailer by default. The examples below show it in the final position; this skill does not override that default.
+The skill overrides the harness default `Co-Authored-By: Claude ...` trailer. Claude-assisted commits get `Assisted-by: Claude <model-id>` as the last trailer; human-only commits get no authorship trailer at all.
 
-## 1. Simple commit, no prompts attached
+## 1. Simple Claude-assisted commit, no prompts archived
+
+Commit message:
 
 ```
 fix(parser): handle nested quotes in CSV cells
@@ -14,13 +16,14 @@ strings were split incorrectly. The parser now tracks nesting depth
 with a small state machine.
 
 Closes #142
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Assisted-by: Claude claude-opus-4-7
 ```
 
-User said no to prompt attachment. Standard Conventional Commits format.
+No `prompts/` file written. The user declined the archive step (or did not engage). The `Assisted-by:` trailer still goes in: Claude wrote the fix, even though the prompts that produced it are not archived.
 
-## 2. Commit with one prompt attached
+## 2. Claude-assisted commit with one prompt archived
+
+Commit message:
 
 ```
 feat(abstract): tighten introduction to 150 words
@@ -30,14 +33,30 @@ Trimmed redundant framing and moved the contribution statement to
 the end of paragraph one.
 
 Prompts:
-- Can you cut the abstract intro to 150 words? Keep the contribution sentence but lose the lit-review framing.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+- 2026-06-02-001-tighten-abstract-intro
+Assisted-by: Claude claude-opus-4-7
 ```
 
-The prompt explains the editorial decision better than any body text could. Good case for attaching.
+Companion archive file `prompts/2026-06-02-001-tighten-abstract-intro.md`:
 
-## 3. Commit with several prompts attached, showing chronology
+```markdown
+---
+id: 2026-06-02-001-tighten-abstract-intro
+timestamp: 2026-06-02T14:32:11+02:00
+model: claude-opus-4-7
+commit_sha: a1b2c3d4e5f6789012345678901234567890abcd
+files_touched:
+  - manuscript/abstract.qmd
+---
+
+Can you cut the abstract intro to 150 words? Keep the contribution sentence but lose the lit-review framing.
+```
+
+The commit message stays tidy; the archive file holds the full prompt for later citation in a Methods section.
+
+## 3. Claude-assisted commit with several prompts archived
+
+Commit message:
 
 ```
 refactor(skill): restructure prompt-attachment menu
@@ -47,16 +66,15 @@ support. The earlier free-text version was ambiguous when prompts
 contained commas.
 
 Prompts:
-- The prompt menu is confusing, users have to type long strings. Can we make it numbered?
-- Also let them pick ranges like 1-3, not just comma-separated.
-- One more thing: add an "all" and "none" shortcut.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+- 2026-06-02-002-numbered-prompt-menu
+- 2026-06-02-003-add-range-selection
+- 2026-06-02-004-add-all-none-shortcuts
+Assisted-by: Claude claude-opus-4-7
 ```
 
-The sequence of prompts is the design history. Useful when revisiting "why does this look this way?" months later.
+Three companion files under `prompts/`, one per prompt, in the order the prompts were given. The sequence is the design history.
 
-## 4. Prompt with code, trimmed
+## 4. Prompt with code, archived verbatim
 
 User's prompt was:
 
@@ -68,7 +86,7 @@ User's prompt was:
 > ```
 > Can you fix it?"
 
-Resulting commit:
+Commit message:
 
 ```
 fix(users): guard against missing user in getUser
@@ -78,14 +96,38 @@ fix(users): guard against missing user in getUser
 and lets callers decide how to handle a missing user.
 
 Prompts:
-- I'm getting an error: TypeError: cannot read property 'name' of undefined at line 42. Here's the function: [code omitted] Can you fix it?
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+- 2026-06-02-005-fix-getuser-typeerror
+Assisted-by: Claude claude-opus-4-7
 ```
 
-Code fence stripped to `[code omitted]`; the diff captures the code, the prompt captures the intent.
+Companion archive file `prompts/2026-06-02-005-fix-getuser-typeerror.md`:
 
-## 5. Long prompt, truncated
+```markdown
+---
+id: 2026-06-02-005-fix-getuser-typeerror
+timestamp: 2026-06-02T15:07:43+02:00
+model: claude-opus-4-7
+commit_sha: b2c3d4e5f6789012345678901234567890abcdef
+files_touched:
+  - src/users/getUser.js
+---
+
+I'm getting an error: `TypeError: cannot read property 'name' of undefined at line 42`. Here's the function:
+
+```js
+function getUser(id) {
+  return users.find(u => u.id === id).name;
+}
+```
+
+Can you fix it?
+```
+
+Code fences are preserved verbatim. The archive is lossless because a reader of the published paper may need to see exactly what was asked.
+
+## 5. Long prompt, archived without truncation
+
+Commit message:
 
 ```
 docs(readme): rewrite quickstart for clarity
@@ -94,12 +136,11 @@ Restructured into three sections (install, first command, next steps)
 and removed three outdated screenshots.
 
 Prompts:
-- The README quickstart is too dense. New users have told me they get lost halfway through the install section because we mix system requirements, install commands, and post-install verification all in one block. Can you restructure it so...
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+- 2026-06-02-006-rewrite-quickstart-section
+Assisted-by: Claude claude-opus-4-7
 ```
 
-Truncated with `...`. Full prompt is in the conversation history if anyone needs it.
+The archive file contains the full prompt body (multiple paragraphs, code blocks, the works). No truncation. If the trailer line `- 2026-06-02-006-rewrite-quickstart-section` is the only thing in `git log --oneline`, that is by design: the commit log stays short, the archive carries the long text.
 
 ## 6. PR description (separate from commit message)
 
@@ -122,7 +163,64 @@ material.
 - Reworded transitions in paragraphs two and three
 ```
 
-Don't put the `Prompts:` trailer in the PR body; it goes in the commit message only. PRs are for reviewers; commit messages are for archaeology.
+Do not put the `Prompts:` or `Assisted-by:` trailer in the PR body. They go in the commit message only. Do not include any "Generated with Claude Code" emoji line; the user's global guidance forbids emojis.
+
+## 7. Human-only commit
+
+Commit message:
+
+```
+docs(abstract): fix typo in conclusion sentence
+
+s/effected/affected/
+```
+
+No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prompts/`. The human typed this fix in their editor; Claude was not involved.
+
+Absence of the `Assisted-by:` trailer is the signal. `git log --invert-grep --grep='^Assisted-by:'` lists every commit on this branch where the human worked alone.
+
+## 8. Extracting prompts for a Methods section or supplementary material
+
+The archive is designed to make the Methods section trivial to produce.
+
+**List every Claude-assisted commit on the branch:**
+
+```bash
+git log --grep='^Assisted-by:' --pretty=format:'%h  %s'
+```
+
+**List every prompt referenced in the log, in commit order:**
+
+```bash
+git log --grep='^Prompts:' --pretty=format:'%H' \
+  | while read sha; do
+      git show --no-patch --format='%B' "$sha" \
+        | awk '/^Prompts:/{f=1;next} /^[A-Z][a-zA-Z-]+:/{f=0} f && /^- /{print substr($0,3)}'
+    done
+```
+
+**Produce a Markdown table for supplementary material** (commit, model, prompt):
+
+```bash
+{
+  echo "| Commit | Model | Prompt |"
+  echo "|---|---|---|"
+  for f in prompts/*.md; do
+    sha=$(awk '/^commit_sha:/{print $2; exit}' "$f" | cut -c1-7)
+    model=$(awk '/^model:/{print $2; exit}' "$f")
+    prompt=$(awk '/^---$/{c++; next} c==2' "$f" | tr '\n' ' ' | sed 's/|/\\|/g')
+    echo "| $sha | $model | $prompt |"
+  done
+} > methods/supplementary-prompts.md
+```
+
+**Count prompts by model** (useful when a paper spans more than one model version):
+
+```bash
+grep -h '^model:' prompts/*.md | sort | uniq -c
+```
+
+The archive files are RO-Crate-compatible if you later wrap the repo for archival. Each file has stable identifiers (`id`, `commit_sha`, `timestamp`) that a `ro-crate-metadata.json` can reference.
 
 ## Anti-examples
 
@@ -144,29 +242,51 @@ Bad: not enough context, no body.
 fix: bug
 ```
 
-Bad: `Prompts:` trailer with raw newlines (breaks `git log --oneline`):
-
-```
-Prompts:
-- Can you fix the parser?
-  It's choking on the export file
-  and I need to ship this today.
-```
-
-Fix: collapse to one line per prompt.
+Bad: `Prompts:` trailer with full text instead of IDs (this is the old format; the archive file should hold the full text).
 
 ```
 Prompts:
 - Can you fix the parser? It's choking on the export file and I need to ship this today.
 ```
 
-Bad: `Prompts:` trailer placed after identity trailers (out of order):
+Fix: archive the prompt to `prompts/YYYY-MM-DD-NNN-slug.md` and reference its ID.
 
 ```
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-
 Prompts:
-- ...
+- 2026-06-02-007-fix-parser-export-choke
 ```
 
-Fix: `Prompts:` goes first in the trailer block, identity trailers last. See `commit-conventions.md` for the ordering convention.
+Bad: `Co-Authored-By: Claude` in a commit made through this skill. The skill replaces that trailer with `Assisted-by:`.
+
+```
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+```
+
+Fix:
+
+```
+Assisted-by: Claude claude-opus-4-7
+```
+
+Bad: `Assisted-by:` trailer on a human-only commit. Defeats the purpose of having two paths.
+
+```
+docs(abstract): fix typo in conclusion sentence
+
+Assisted-by: Claude claude-opus-4-7
+```
+
+Fix: omit the trailer entirely on the human-only path.
+
+Bad: `Assisted-by:` trailer placed before issue references (out of order).
+
+```
+Assisted-by: Claude claude-opus-4-7
+Closes #142
+```
+
+Fix: `Assisted-by:` goes last. See `commit-conventions.md` for the ordering convention.
+
+Bad: archive file with `commit_sha: pending` left in place after the commit landed. Either the SHA fixup was skipped or the commit was pushed before step 5 finished.
+
+Fix: if unpushed, run the `commit_sha` fixup (see SKILL.md step 5). If pushed, leave `pending` and note it; do not amend pushed history.
