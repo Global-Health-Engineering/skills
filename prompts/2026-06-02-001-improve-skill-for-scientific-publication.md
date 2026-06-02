@@ -2,7 +2,6 @@
 id: 2026-06-02-001-improve-skill-for-scientific-publication
 timestamp: 2026-06-02T12:30:00+02:00
 model: claude-opus-4-7
-commit_sha: pending
 files_touched:
   - commit-push-pr/README.md
   - commit-push-pr/SKILL.md
