@@ -44,7 +44,6 @@ Companion archive file `prompts/2026-06-02-001-tighten-abstract-intro.md`:
 id: 2026-06-02-001-tighten-abstract-intro
 timestamp: 2026-06-02T14:32:11+02:00
 model: claude-opus-4-7
-commit_sha: a1b2c3d4e5f6789012345678901234567890abcd
 files_touched:
   - manuscript/abstract.qmd
 ---
@@ -52,7 +51,7 @@ files_touched:
 Can you cut the abstract intro to 150 words? Keep the contribution sentence but lose the lit-review framing.
 ```
 
-The commit message stays tidy; the archive file holds the full prompt for later citation in a Methods section.
+The commit message stays tidy; the archive file holds the full prompt for later citation in a Methods section. The archive file does not record a `commit_sha`; the `id` is unique and the commit is found via `git log --all --grep='2026-06-02-001-tighten-abstract-intro'`.
 
 ## 3. Claude-assisted commit with several prompts archived
 
@@ -107,7 +106,6 @@ Companion archive file `prompts/2026-06-02-005-fix-getuser-typeerror.md`:
 id: 2026-06-02-005-fix-getuser-typeerror
 timestamp: 2026-06-02T15:07:43+02:00
 model: claude-opus-4-7
-commit_sha: b2c3d4e5f6789012345678901234567890abcdef
 files_touched:
   - src/users/getUser.js
 ---
@@ -199,14 +197,15 @@ git log --grep='^Prompts:' --pretty=format:'%H' \
     done
 ```
 
-**Produce a Markdown table for supplementary material** (commit, model, prompt):
+**Produce a Markdown table for supplementary material** (commit, model, prompt). Looks up each prompt's commit by grepping the log for the prompt's `id`:
 
 ```bash
 {
   echo "| Commit | Model | Prompt |"
   echo "|---|---|---|"
   for f in prompts/*.md; do
-    sha=$(awk '/^commit_sha:/{print $2; exit}' "$f" | cut -c1-7)
+    id=$(awk '/^id:/{print $2; exit}' "$f")
+    sha=$(git log --all --grep="$id" --pretty=format:'%h' | head -1)
     model=$(awk '/^model:/{print $2; exit}' "$f")
     prompt=$(awk '/^---$/{c++; next} c==2' "$f" | tr '\n' ' ' | sed 's/|/\\|/g')
     echo "| $sha | $model | $prompt |"
@@ -220,7 +219,14 @@ git log --grep='^Prompts:' --pretty=format:'%H' \
 grep -h '^model:' prompts/*.md | sort | uniq -c
 ```
 
-The archive files are RO-Crate-compatible if you later wrap the repo for archival. Each file has stable identifiers (`id`, `commit_sha`, `timestamp`) that a `ro-crate-metadata.json` can reference.
+**Find the commit for a single archive file:**
+
+```bash
+id=$(awk '/^id:/{print $2; exit}' prompts/2026-06-02-001-tighten-abstract-intro.md)
+git log --all --grep="$id" --pretty=format:'%H %s'
+```
+
+The archive files are RO-Crate-compatible if you later wrap the repo for archival. Each file has stable identifiers (`id`, `timestamp`) that a `ro-crate-metadata.json` can reference. The commit SHA is derived on demand from `git log --grep` rather than stored in the file, since the SHA cannot be known at archive-write time (it depends on the file's own contents).
 
 ## Anti-examples
 
@@ -287,6 +293,10 @@ Closes #142
 
 Fix: `Assisted-by:` goes last. See `commit-conventions.md` for the ordering convention.
 
-Bad: archive file with `commit_sha: pending` left in place after the commit landed. Either the SHA fixup was skipped or the commit was pushed before step 5 finished.
+Bad: archive file carries a `commit_sha:` field. The schema does not include one. The SHA cannot be known at write time (it depends on the file's contents) and is derived on demand from `git log --grep='<id>'`.
 
-Fix: if unpushed, run the `commit_sha` fixup (see SKILL.md step 5). If pushed, leave `pending` and note it; do not amend pushed history.
+Fix: remove the field. Use the `id` as the sole link between archive file and commit.
+
+Bad: archive file `id` does not match the corresponding `Prompts:` trailer entry in the commit message. Breaks the round-trip lookup.
+
+Fix: copy the `id` from the YAML front matter into the trailer verbatim, no rename, no slug edit.

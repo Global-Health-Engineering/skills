@@ -161,7 +161,6 @@ If **yes**:
    id: 2026-06-02-001-tighten-abstract-intro
    timestamp: 2026-06-02T14:32:11+02:00
    model: claude-opus-4-7
-   commit_sha: pending
    files_touched:
      - manuscript/abstract.qmd
    ---
@@ -171,9 +170,9 @@ If **yes**:
 
    Notes:
    - `model` is the model ID (lowercased, no version label suffixes), pulled from the environment block (`claude-opus-4-7`, `claude-sonnet-4-6`, etc.).
-   - `commit_sha` is written as `pending`. Step 5 fills it in after the commit lands.
    - `files_touched` is the output of `git diff --staged --name-only` at archive time, one entry per line.
    - The prompt body is the full user turn, unedited. Do not strip code fences. Do not collapse newlines. This is the archive copy; readability of `git log` is handled by the trailer.
+   - No `commit_sha:` field. The `id` is unique and the `Prompts:` trailer in the matching commit pairs them. To find the commit for a given id, run `git log --all --grep='<id>'`. Recording a SHA in the file would require a fixed-point amend (writing the SHA you are about to compute), which is not possible.
 
 5. **Format the slim trailer.** Append to the commit message body, separated by a blank line:
 
@@ -206,15 +205,9 @@ The model ID is the lowercased model name from your environment (e.g. `claude-op
 
 **After committing:**
 
-1. Run `git log -1 --stat` and show the user the result.
-2. On the Claude-assisted path, if step 4 wrote any `prompts/*.md` files, fill in the real commit SHA. For each newly-written archive file, replace the YAML line `commit_sha: pending` with `commit_sha: <full sha>` from `git rev-parse HEAD`. Then amend the commit to include the SHA fix:
+Run `git log -1 --stat` and show the user the result.
 
-   ```bash
-   git add prompts/2026-06-02-*.md
-   git commit --amend --no-edit
-   ```
-
-   This is the one place in this skill where `--amend` is allowed, because the commit has not been pushed yet and the only change is writing the SHA back into the same files that landed in this very commit. If the commit has already been pushed for any reason, skip the fixup and warn the user; the archive files still point to the correct commit, just with `pending` as the SHA placeholder.
+No post-commit fixup is needed. The `Prompts:` trailer in the commit message references the archive file by its `id`, and the archive file references the commit back through that same `id`. To go from an archive file to its commit, run `git log --all --grep='<id>'`. To go from a commit to its archive files, read the `Prompts:` trailer.
 
 ### 6. Push (only if asked)
 
@@ -264,7 +257,7 @@ If **yes**:
 ## What this skill does NOT do
 
 - **Force-push.** Never `git push --force` or `--force-with-lease` without explicit user approval per push.
-- **Rewrite shared history.** No `rebase -i`, and no `commit --amend` on commits that have been pushed. The one allowed `--amend` is the unpushed `commit_sha` fixup in Step 5 on the Claude-assisted path.
+- **Rewrite shared history.** No `rebase -i`, no `commit --amend`. The harness's "create a new commit, never `--amend`" rule applies without exception.
 - **Use `Co-Authored-By: Claude`.** This skill replaces the harness default with `Assisted-by: Claude <model-id>` on Claude-assisted commits and omits it entirely on human-only commits. Do not let the harness re-introduce `Co-Authored-By`.
 - **Publish `prompts/` to external services.** The directory stays in the repo. The skill does not upload it anywhere, does not post it as a gist, does not include it in a PR body.
 - **Truncate or paraphrase prompts in the archive.** Files in `prompts/` are verbatim copies of the user turn. Truncation only applied to the (now removed) full-text trailer in the old design; the archive must be lossless so the Methods section can quote it.
@@ -274,14 +267,14 @@ If **yes**:
 
 ## Edge cases
 
-- **Pre-commit hooks fail:** show the hook output, ask the user how to proceed. Don't silently `--no-verify`. Per harness rules, fix the underlying issue and create a new commit; do not `--amend` (the only allowed `--amend` is the unpushed `commit_sha` fixup in Step 5).
+- **Pre-commit hooks fail:** show the hook output, ask the user how to proceed. Don't silently `--no-verify`. Per harness rules, fix the underlying issue and create a new commit; do not `--amend`.
 - **Detached HEAD:** stop and explain; offer to create a branch from the current commit.
 - **Empty diff after staging:** confirm there's something to commit. `git commit --allow-empty` only on explicit request.
 - **Compaction dropped earlier prompts:** for the prompt-archive step, only offer prompts you can still see verbatim. Don't reconstruct from summaries.
 - **Compaction dropped the session's tool-call history:** path detection (Step 0) cannot rely on it. Ask the user once whether this is a Claude-assisted or human-only commit and continue.
 - **`prompts/` is gitignored or excluded by a global gitignore:** the archive files will not be staged. Flag this to the user before committing and ask whether to force-add (`git add -f prompts/...`) or skip the archive for this commit.
 - **`prompts/YYYY-MM-DD-NNN-slug.md` collision:** another process or session created the same NNN. Pick the next free integer; do not overwrite.
-- **The post-commit SHA fixup fails or the commit was pushed before step 5 finished:** leave `commit_sha: pending` in place and tell the user. Do not amend pushed history.
+- **Looking up the commit for an archive file later:** run `git log --all --grep='<id>' --pretty=format:'%H %s'`. The `id` from the file's YAML front matter is unique and appears verbatim in the commit's `Prompts:` trailer.
 
 ---
 

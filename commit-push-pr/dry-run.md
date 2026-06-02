@@ -18,7 +18,7 @@ git commit -q -m "chore: initial commit"
 
 ## Check 1: Claude-assisted path, one prompt archived
 
-Goal: verify that a `prompts/YYYY-MM-DD-001-*.md` file is written with proper YAML front matter, the commit message has `Prompts:` (ID-only) plus `Assisted-by:` trailers, no `Co-Authored-By:` appears, and the `commit_sha` fixup runs.
+Goal: verify that a `prompts/YYYY-MM-DD-001-*.md` file is written with proper YAML front matter, the commit message has `Prompts:` (ID-only) plus `Assisted-by:` trailers, no `Co-Authored-By:` appears, and the id round-trips between the archive file and the commit.
 
 In a fresh Claude Code session inside `/tmp/cppr-dryrun`:
 
@@ -28,11 +28,15 @@ In a fresh Claude Code session inside `/tmp/cppr-dryrun`:
 Verify after:
 
 ```bash
-ls prompts/                          # expect: YYYY-MM-DD-001-<slug>.md
-git log -1 --format='%B'             # expect: Prompts: ID, then Assisted-by: Claude <model-id>
+ls prompts/                                       # expect: YYYY-MM-DD-001-<slug>.md
+git log -1 --format='%B'                          # expect: Prompts: ID, then Assisted-by: Claude <model-id>
 git log -1 --format='%B' | grep -i 'co-authored-by' && echo BAD || echo GOOD
-grep '^commit_sha:' prompts/*.md     # expect: real SHA OR "pending" (see "Known limitation" below)
+grep '^commit_sha:' prompts/*.md && echo BAD || echo GOOD   # expect: no commit_sha field at all
 grep '^files_touched:' -A2 prompts/*.md
+
+# Round-trip: id in file should appear verbatim in the commit's Prompts: trailer
+id=$(awk '/^id:/{print $2; exit}' prompts/*.md | head -1)
+git log --all --grep="$id" --pretty=format:'%h %s'   # expect: one hit
 ```
 
 ## Check 2: Human-only path
@@ -85,15 +89,3 @@ rm -rf /tmp/cppr-dryrun
 ## What "pass" looks like
 
 All five checks meet the expected output, and `grep -i 'co-authored-by'` over the full log returns zero matches.
-
-## Known limitation: the `commit_sha` fixup
-
-The skill's Step 5 says to amend the commit to fill in the real SHA. There is a chicken-and-egg problem: amending changes the SHA, so the SHA you wrote into the file is the pre-amend SHA, which no longer exists in history.
-
-Three honest options, in order of recommendation:
-
-1. **Leave `commit_sha: pending` in the committed file.** The archive file's `id` (e.g. `2026-06-02-001-...`) is unique, and `git log --all --grep='2026-06-02-001-'` finds the commit. The SHA inside the file is then redundant.
-2. **Skip the SHA fixup entirely** and let `pending` stand. Same outcome as option 1.
-3. **Record the parent commit's SHA** as a stable anchor (it does not change when you amend the child). Not implemented yet; would need a SKILL.md change.
-
-This will be tightened in a follow-up commit to the skill itself. For now, option 1 is what the skill produces in practice if you accept the existing amend step but reset to `pending` after observing the SHA drift. Or do nothing and accept `pending`.
