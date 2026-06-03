@@ -1,15 +1,15 @@
 ---
-name: commit-push-pr
-description: Commit staged or unstaged changes with a well-crafted Conventional Commits message. Detects whether the work was Claude-assisted or human-only and marks the commit accordingly (Assisted-by trailer + prompts/ archive file, or nothing). Optionally pushes and opens a pull request. Use this skill when the user asks to commit, push, or open a PR. Triggers on explicit git verbs: "commit", "push", "pr", "pull request", "open a pr", "make a commit with the prompts". Do NOT auto-trigger on softer phrases like "ship it" or "wrap this up" unless the user has also named a git action.
+name: commit
+description: Commit staged or unstaged changes with a well-crafted Conventional Commits message. Detects whether the work was Claude-assisted or human-only and marks the commit accordingly (Assisted-by trailer + prompts/ archive file, or nothing). Use this skill when the user asks to commit. Triggers on explicit git verbs: "commit", "save my changes to git", "make a commit with the prompts". Do NOT auto-trigger on softer phrases like "ship it" or "wrap this up" unless the user has also named a git action. Push and PR creation are out of scope; see the `open-pr` skill for opening a pull request.
 ---
 
-# commit-push-pr
+# commit
 
-A skill for turning a working-directory change into a clean commit (and optionally a pushed branch + pull request), with built-in support for distinguishing Claude-assisted commits from human-only commits and for archiving the prompts that produced Claude-assisted changes.
+A skill for turning a working-directory change into a clean commit, with built-in support for distinguishing Claude-assisted commits from human-only commits and for archiving the prompts that produced Claude-assisted changes.
 
 The goal is a tidy `git log` that future-you (or a collaborator, or a journal reviewer) can read in one pass, and, when wanted, an auditable trail back to the prompts that produced each Claude-assisted change.
 
-This skill assumes the harness's built-in "Committing changes with git" and "Creating pull requests" instructions are in effect. It does not restate them. What it adds:
+This skill assumes the harness's built-in "Committing changes with git" instructions are in effect. It does not restate them. What it adds:
 
 1. **Two commit paths** (Claude-assisted vs human-only), detected automatically and confirmed before committing.
 2. **Conventional Commits guidance** (type, scope, subject, body rules).
@@ -17,18 +17,20 @@ This skill assumes the harness's built-in "Committing changes with git" and "Cre
 4. **An `Assisted-by:` trailer** for Claude-assisted commits, replacing the harness default `Co-Authored-By: Claude` trailer.
 5. **Splitting heuristics** for diffs that span multiple concerns.
 
+Push and pull-request creation are handled separately. Run `git push` yourself, then invoke the `open-pr` skill if you want a PR.
+
 ---
 
 ## When to use this skill
 
-Trigger only on explicit git verbs from the user: "commit", "push", "open a PR", "make a pull request", "save my changes to git".
+Trigger only on explicit git verbs from the user: "commit", "save my changes to git", "make a commit".
 
 Do NOT auto-trigger on:
 
 - "ship it", "wrap this up", "I'm done", "let's submit this" (these often mean "summarize" or "move on", not "commit").
 - General editing or reviewing requests.
 
-If the user only says "commit", default to commit-only (no push, no PR). Confirm before pushing if the branch has no upstream, or before opening a PR.
+If the user says "commit and push" or "commit and open a PR", run this skill for the commit, then hand off: tell the user to run `git push` themselves, and invoke `open-pr` if they want a PR.
 
 ---
 
@@ -209,58 +211,18 @@ Run `git log -1 --stat` and show the user the result.
 
 No post-commit fixup is needed. The `Prompts:` trailer in the commit message references the archive file by its `id`, and the archive file references the commit back through that same `id`. To go from an archive file to its commit, run `git log --all --grep='<id>'`. To go from a commit to its archive files, read the `Prompts:` trailer.
 
-### 6. Push (only if asked)
-
-If the user said "push" or "PR", continue. Otherwise stop after the commit.
-
-The harness's PR-creation rules apply. This skill adds nothing to the push step itself; just remember:
-
-- New branch without upstream: `git push -u origin <branch>`.
-- On a default branch: confirm with the user before pushing.
-- On merge conflict during push: stop, surface the conflict, ask how to proceed. Do not run `git pull` automatically; it can create unwanted merge commits or trigger an unintended rebase.
-
-### 7. Open the PR (only if asked)
-
-Use `gh pr create` per the harness instructions.
-
-This skill adds two rules:
-
-- **Do not put the `Prompts:` or `Assisted-by:` trailers in the PR body.** They belong in the commit message only. PRs are for reviewers; commit messages are for archaeology.
-- **Do not include the `Generated with Claude Code` emoji line** that the harness's default PR template suggests. The user's global guidance forbids emojis.
-
-### 8. Offer to run the PR's Test plan
-
-After opening the PR, ask the user whether to run the checks listed under `## Test plan` in the PR body. Phrase the question simply, e.g.: "Should I run through the Test plan now?"
-
-If **no**: stop. The PR is done.
-
-If **yes**:
-
-1. **Work through each checkbox in order.** For each item, pick the cheapest verification that actually proves the claim:
-   - Rendering a Quarto / R Markdown / Jupyter document: invoke the local renderer (`quarto render <file>`, `Rscript -e 'rmarkdown::render(...)'`, etc.). On macOS where `quarto` isn't on PATH, try `/Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto` or `/Applications/Positron.app/Contents/Resources/app/quarto/bin/quarto` before giving up.
-   - Content claims ("X appears in the output", "no Y in the directory"): use `grep` / `Read` against the rendered file or source.
-   - Build/test claims: run the relevant `npm test`, `pytest`, `devtools::test()`, etc.
-   - If a claim can only be verified by a human (visual inspection, "looks reasonable"): say so, leave the box unchecked, and report which items need the user's eyes.
-
-2. **If any check fails:** stop. Report the failure, do not tick the box, do not delete anything yet. Ask how to proceed (fix and re-run, or accept and move on).
-
-3. **If all checks pass and the run produced render artifacts** (`.html`, `.pdf`, `.docx`, `.knit.md`, Quarto `_files/` directories, `dist/`, `build/`):
-   - List the artifacts.
-   - Delete them. Default to deleting without re-asking: the user has already opted into this skill's workflow and asked for tests. Skip artifacts that were tracked in git before this run (check `git status` / `git ls-files` before deleting). Only clean up what the test run itself produced.
-
-4. **Tick off the boxes.** Use `gh pr edit <PR>  --body-file -` (or `gh api`) to rewrite the PR body with `- [x]` for items that passed. Preserve everything else in the body verbatim. If some items required human verification, leave those as `- [ ]` and note which ones in your reply to the user.
-
-5. **Report.** A one-line summary: "All N items passed, artifacts deleted, PR body updated." Or, if mixed: "M of N passed, K need your eyes: [list]."
+If the user asked to "commit and push" or "commit and open a PR", stop after the commit. Tell them the commit is done and that push is theirs to run; if they want a PR, point them at the `open-pr` skill.
 
 ---
 
 ## What this skill does NOT do
 
-- **Force-push.** Never `git push --force` or `--force-with-lease` without explicit user approval per push.
+- **Push.** This skill never runs `git push`. Run it yourself after the commit.
+- **Open pull requests.** See the `open-pr` skill.
 - **Rewrite shared history.** No `rebase -i`, no `commit --amend`. The harness's "create a new commit, never `--amend`" rule applies without exception.
 - **Use `Co-Authored-By: Claude`.** This skill replaces the harness default with `Assisted-by: Claude <model-id>` on Claude-assisted commits and omits it entirely on human-only commits. Do not let the harness re-introduce `Co-Authored-By`.
-- **Publish `prompts/` to external services.** The directory stays in the repo. The skill does not upload it anywhere, does not post it as a gist, does not include it in a PR body.
-- **Truncate or paraphrase prompts in the archive.** Files in `prompts/` are verbatim copies of the user turn. Truncation only applied to the (now removed) full-text trailer in the old design; the archive must be lossless so the Methods section can quote it.
+- **Publish `prompts/` to external services.** The directory stays in the repo. The skill does not upload it anywhere, does not post it as a gist.
+- **Truncate or paraphrase prompts in the archive.** Files in `prompts/` are verbatim copies of the user turn. The archive must be lossless so the Methods section can quote it.
 - **Commit sensitive files.** Scan the diff and `git status` for things that look like secrets (API keys, `.env`, private keys, tokens, credential files). Respect `.gitignore`: if an ignored-looking file appears as untracked-but-about-to-be-staged, flag it. Stop and ask before committing anything suspicious. This includes prompts: if a prompt to be archived under `prompts/` contains what looks like a secret, flag it and ask before writing the file.
 
 ---
