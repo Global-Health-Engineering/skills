@@ -1,6 +1,6 @@
 # Commit conventions
 
-Reference for `commit-push-pr` skill. Loaded when Claude needs deeper guidance on type/scope choice or message structure.
+Reference for the `commit` skill. Loaded when Claude needs deeper guidance on type/scope choice or message structure.
 
 ## Conventional Commits format
 

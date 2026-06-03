@@ -1,6 +1,6 @@
 # Examples
 
-Worked examples of commits produced by `commit-push-pr`, covering both paths (Claude-assisted and human-only) and showing the `prompts/` archive file alongside the commit message where relevant.
+Worked examples of commits produced by the `commit` skill, covering both paths (Claude-assisted and human-only) and showing the `prompts/` archive file alongside the commit message where relevant.
 
 The skill overrides the harness default `Co-Authored-By: Claude ...` trailer. Claude-assisted commits get `Assisted-by: Claude <model-id>` as the last trailer; human-only commits get no authorship trailer at all.
 
@@ -140,30 +140,7 @@ Assisted-by: Claude claude-opus-4-7
 
 The archive file contains the full prompt body (multiple paragraphs, code blocks, the works). No truncation. If the trailer line `- 2026-06-02-006-rewrite-quickstart-section` is the only thing in `git log --oneline`, that is by design: the commit log stays short, the archive carries the long text.
 
-## 6. PR description (separate from commit message)
-
-For the PR body, not the commit message, use a simple structure:
-
-```markdown
-## What
-
-Tightens the conference abstract intro to fit the 150-word target.
-
-## Why
-
-Word limit is 300; full abstract was at 380. Intro had the most cuttable
-material.
-
-## How
-
-- Removed lit-review framing in paragraph one
-- Moved contribution sentence to end of paragraph one
-- Reworded transitions in paragraphs two and three
-```
-
-Do not put the `Prompts:` or `Assisted-by:` trailer in the PR body. They go in the commit message only. Do not include any "Generated with Claude Code" emoji line; the user's global guidance forbids emojis.
-
-## 7. Human-only commit
+## 6. Human-only commit
 
 Commit message:
 
@@ -177,7 +154,7 @@ No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prom
 
 Absence of the `Assisted-by:` trailer is the signal. `git log --invert-grep --grep='^Assisted-by:'` lists every commit on this branch where the human worked alone.
 
-## 8. Extracting prompts for a Methods section or supplementary material
+## 7. Extracting prompts for a Methods section or supplementary material
 
 The archive is designed to make the Methods section trivial to produce.
 

@@ -1,13 +1,13 @@
-# Dry-run plan: verifying `commit-push-pr`
+# Dry-run plan: verifying the `commit` skill
 
-A short, runnable script to verify each branch of the skill before pointing it at a real paper repo. Estimated time: about 10 minutes.
+A short, runnable script to verify each branch of the skill before pointing it at a real paper repo. Estimated time: about 8 minutes.
 
 Run in any throwaway repo. None of these steps touch your actual paper.
 
 ## Setup (run once)
 
 ```bash
-mkdir -p /tmp/cppr-dryrun && cd /tmp/cppr-dryrun
+mkdir -p /tmp/commit-dryrun && cd /tmp/commit-dryrun
 git init -q
 git config user.email "you@example.com"
 git config user.name "Your Name"
@@ -20,7 +20,7 @@ git commit -q -m "chore: initial commit"
 
 Goal: verify that a `prompts/YYYY-MM-DD-001-*.md` file is written with proper YAML front matter, the commit message has `Prompts:` (ID-only) plus `Assisted-by:` trailers, no `Co-Authored-By:` appears, and the id round-trips between the archive file and the commit.
 
-In a fresh Claude Code session inside `/tmp/cppr-dryrun`:
+In a fresh Claude Code session inside `/tmp/commit-dryrun`:
 
 1. Tell Claude: *"Create a file `manuscript/abstract.qmd` with three sentences about climate adaptation."*
 2. Then: *"Now commit this. Archive that prompt."*
@@ -64,7 +64,19 @@ Goal: confirm the user can force the human-only path even when Claude touched fi
 
 In the same session, ask Claude to edit `manuscript/abstract.qmd` again, then say: *"Commit this as human-only."* Verify the resulting commit has no `Assisted-by:` trailer.
 
-## Check 4: Extraction queries
+## Check 4: Claude-assisted commit without archive
+
+Goal: confirm the "Claude did this but no archive" sub-case works. The commit gets `Assisted-by:` but no `Prompts:` trailer and no new file under `prompts/`.
+
+In the same session, ask Claude to edit `manuscript/abstract.qmd` once more, then say: *"Commit this. No prompts archive."* Verify:
+
+```bash
+git log -1 --format='%B' | grep '^Assisted-by:' && echo GOOD || echo BAD
+git log -1 --format='%B' | grep '^Prompts:'    && echo BAD  || echo GOOD
+ls prompts/ | wc -l                  # expect: unchanged from Check 1
+```
+
+## Check 5: Extraction queries
 
 Goal: confirm the Methods-section recipes in `references/examples.md` actually work against your log.
 
@@ -74,18 +86,24 @@ git log --invert-grep --grep='^Assisted-by:' --pretty=format:'%h  %s'
 ls prompts/ && cat prompts/*.md
 ```
 
-Also try the Markdown-table builder from example 8 in `references/examples.md`.
+Also try the Markdown-table builder from example 7 in `references/examples.md`.
 
-## Check 5: PR body (optional)
+## Check 6: Skill stays in its lane
 
-Push the branch to a throwaway GitHub repo and ask Claude to open a PR. Verify the PR body contains no `Prompts:`, no `Assisted-by:`, and no "Generated with Claude Code" emoji line.
+Goal: confirm the skill does not push and does not open PRs on its own.
+
+Ask Claude: *"Now push and open a PR."* The skill should refuse to push or open a PR, and should tell you to run `git push` yourself and invoke the `open-pr` skill.
+
+```bash
+git log @{u}.. 2>/dev/null && echo "remote tracked" || echo "no remote, no push: GOOD"
+```
 
 ## Clean up
 
 ```bash
-rm -rf /tmp/cppr-dryrun
+rm -rf /tmp/commit-dryrun
 ```
 
 ## What "pass" looks like
 
-All five checks meet the expected output, and `grep -i 'co-authored-by'` over the full log returns zero matches.
+All six checks meet the expected output, and `grep -i 'co-authored-by'` over the full log returns zero matches.
