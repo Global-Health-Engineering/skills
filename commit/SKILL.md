@@ -44,11 +44,13 @@ Before anything else, decide which path this commit follows. The two paths diffe
 
 **Heuristic.** Scan the current session for Claude tool calls that wrote to the working tree: `Edit`, `Write`, `NotebookEdit`, `MultiEdit`, or `Bash` commands that modified tracked files (`mv`, `rm`, `>`, `>>`, `sed -i`, code generators, formatters invoked by you, etc.). If any are present and their effects are still in the staged or unstaged diff, default to the **Claude-assisted path**. Otherwise default to the **human-only path**.
 
+**Prior-session fallback.** If the current session has none of those tool calls but the diff still contains staged or untracked files, the work likely came from an earlier, now-exited session in this same project directory. Before falling back to "human-only", search `~/.claude/projects/<sanitized-cwd>/*.jsonl` for prior sessions that touched the files in the diff. If a candidate session is found, treat the commit as **Claude-assisted**, pull the model ID from that session's first assistant turn (not the current session), and harvest its real user prompts (string-form `content`, excluding slash-command and local-command wrappers) as Step 4 candidates. The fresh-repo case (no commits yet, untracked files present) is the strongest signal of a prior-session source; default to Claude-assisted and confirm. See `references/prior-session-detection.md` for the full recipe (path computation, candidate-session search, prompt extraction, model attribution, and reconciling diffs that mix Claude-touched and human-touched files).
+
 Edge cases:
 
 - If Claude edited files earlier but the user reverted those edits by hand and only their own changes remain in the diff, treat as **human-only**.
-- If the diff contains a mix (Claude edited file A, the user separately edited file B without you), default to **Claude-assisted** and offer to split (see Step 2).
-- If the session was loaded from compaction and you cannot see whether Claude edited anything, ask the user once: "Claude-assisted or human-only commit?"
+- If the diff contains a mix (Claude edited file A, the user separately edited file B without you), default to **Claude-assisted** and offer to split (see Step 2). Same rule applies when the Claude-touched files come from a prior session: prefer splitting into one Claude-assisted commit and one human-only commit so `files_touched:` in the archive does not silently lie.
+- If the session was loaded from compaction and you cannot see whether Claude edited anything, check the prior-session transcripts first (see `references/prior-session-detection.md`); only ask the user if that also turns up nothing.
 
 **Confirm in one sentence, then continue.** Example: "Detected Claude-assisted path (you asked me to edit `abstract.qmd` earlier). Override with 'human-only' if that's wrong." Do not block on this confirmation; if the user does not push back, proceed with the detected path.
 
@@ -133,7 +135,7 @@ If **no** (or the user doesn't engage): proceed to commit without the `Prompts:`
 
 If **yes**:
 
-1. **Collect candidate prompts.** Look back through the user's messages still visible in the current context window (not your own replies, not tool calls). A "prompt" is one user turn. Don't fabricate prompts you can't see verbatim; if compaction has dropped earlier turns, tell the user and offer only what's available. Skip:
+1. **Collect candidate prompts.** Look back through the user's messages still visible in the current context window (not your own replies, not tool calls). A "prompt" is one user turn. Don't fabricate prompts you can't see verbatim; if compaction has dropped earlier turns, tell the user and offer only what's available. If Step 0 fell back to a prior session, harvest its real user prompts from the matching `.jsonl` file instead (see `references/prior-session-detection.md` for the extraction recipe). Skip:
    - One-word acknowledgments ("yes", "ok", "thanks", "go ahead").
    - Pure clarifications about the skill itself ("what does step 3 mean").
    - Anything before the most recent commit in this repo (it's already captured).
@@ -171,7 +173,7 @@ If **yes**:
    ```
 
    Notes:
-   - `model` is the model ID (lowercased, no version label suffixes), pulled from the environment block (`claude-opus-4-7`, `claude-sonnet-4-6`, etc.).
+   - `model` is the model ID (lowercased, no version label suffixes). For current-session work, pull it from the environment block (`claude-opus-4-7`, `claude-sonnet-4-6`, etc.). For prior-session work, pull it from the candidate session's first assistant turn (`message.model` in the matching `.jsonl`), since the current session's environment may name a different model.
    - `files_touched` is the output of `git diff --staged --name-only` at archive time, one entry per line.
    - The prompt body is the full user turn, unedited. Do not strip code fences. Do not collapse newlines. This is the archive copy; readability of `git log` is handled by the trailer.
    - No `commit_sha:` field. The `id` is unique and the `Prompts:` trailer in the matching commit pairs them. To find the commit for a given id, run `git log --all --grep='<id>'`. Recording a SHA in the file would require a fixed-point amend (writing the SHA you are about to compute), which is not possible.
@@ -203,7 +205,7 @@ This skill overrides one harness default: do **not** append `Co-Authored-By: Cla
 | Claude-assisted | `Prompts: <IDs>` (if step 4 ran), then `Closes #...` / `Refs #...`, then `Assisted-by: Claude <model-id>` |
 | Human-only | `Closes #...` / `Refs #...` only. No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. |
 
-The model ID is the lowercased model name from your environment (e.g. `claude-opus-4-7`, `claude-sonnet-4-6`). Format the trailer as `Assisted-by: Claude claude-opus-4-7`.
+The model ID is the lowercased model name from your environment (e.g. `claude-opus-4-7`, `claude-sonnet-4-6`). Format the trailer as `Assisted-by: Claude claude-opus-4-7`. When Step 0 fell back to a prior session, use the model from that session's first assistant turn instead (see `references/prior-session-detection.md`), not your current environment. If two candidate sessions used different models, list both comma-separated.
 
 **After committing:**
 
@@ -232,8 +234,9 @@ If the user asked to "commit and push" or "commit and open a PR", stop after the
 - **Pre-commit hooks fail:** show the hook output, ask the user how to proceed. Don't silently `--no-verify`. Per harness rules, fix the underlying issue and create a new commit; do not `--amend`.
 - **Detached HEAD:** stop and explain; offer to create a branch from the current commit.
 - **Empty diff after staging:** confirm there's something to commit. `git commit --allow-empty` only on explicit request.
-- **Compaction dropped earlier prompts:** for the prompt-archive step, only offer prompts you can still see verbatim. Don't reconstruct from summaries.
-- **Compaction dropped the session's tool-call history:** path detection (Step 0) cannot rely on it. Ask the user once whether this is a Claude-assisted or human-only commit and continue.
+- **Compaction dropped earlier prompts:** for the prompt-archive step, only offer prompts you can still see verbatim. Don't reconstruct from summaries. If the current session is the one that did the work but compaction dropped it, the on-disk transcript at `~/.claude/projects/<sanitized-cwd>/<this-session-uuid>.jsonl` still holds the original turns; treat it as a prior-session source (see `references/prior-session-detection.md`).
+- **Compaction dropped the session's tool-call history:** path detection (Step 0) cannot rely on it. Check the on-disk transcripts first (see `references/prior-session-detection.md`); only ask the user as a last resort.
+- **Prior session did the work, this session is fresh:** invoked `/commit` after exiting and reopening, with staged or untracked Claude-touched files present. Run the prior-session search in `references/prior-session-detection.md`; do not silently fall through to the human-only path. Fresh repo (no commits) + untracked files is the strongest signal.
 - **`prompts/` is gitignored or excluded by a global gitignore:** the archive files will not be staged. Flag this to the user before committing and ask whether to force-add (`git add -f prompts/...`) or skip the archive for this commit.
 - **`prompts/YYYY-MM-DD-NNN-slug.md` collision:** another process or session created the same NNN. Pick the next free integer; do not overwrite.
 - **Looking up the commit for an archive file later:** run `git log --all --grep='<id>' --pretty=format:'%H %s'`. The `id` from the file's YAML front matter is unique and appears verbatim in the commit's `Prompts:` trailer.
@@ -244,3 +247,4 @@ If the user asked to "commit and push" or "commit and open a PR", stop after the
 
 - `references/commit-conventions.md`: full Conventional Commits cheatsheet with type definitions, scope guidance, and the authorship-attribution convention (`Assisted-by:` vs human-only).
 - `references/examples.md`: worked examples of commit messages and prompt archive files for both paths, plus extraction recipes for a Methods section.
+- `references/prior-session-detection.md`: recipe for recovering Claude-assisted context (tool calls, prompts, model attribution) from `~/.claude/projects/` when `/commit` is invoked in a fresh session that did not itself produce the diff.
