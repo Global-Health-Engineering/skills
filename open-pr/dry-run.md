@@ -19,46 +19,60 @@ git commit -q -m "chore: initial commit"
 git branch -M main
 git remote add origin "$REMOTE"
 git push -u origin main
-git checkout -b feature/openpr-dryrun
+git checkout -b dev
 echo "A first line." > note.md
 git add note.md
 git commit -q -m "docs: add a scratch note"
-git push -u origin feature/openpr-dryrun
+git push -u origin dev
 ```
 
-## Check 1: Refuse to run without a pushed branch
+## Check 1: Refuse to run from a non-`dev` branch
 
-Goal: confirm the skill stops when the branch has no upstream.
+Goal: confirm the skill stops when the current branch is anything other than `dev`.
 
 ```bash
-git checkout -b feature/unpushed
-echo "unpushed work" > unpushed.md
-git add unpushed.md
-git commit -q -m "docs: unpushed work"
-# Do NOT push.
+git checkout -b feature/not-dev
+echo "off-branch work" > off.md
+git add off.md
+git commit -q -m "docs: off-branch work"
+git push -u origin feature/not-dev
 ```
 
-In a Claude Code session inside the repo, say: *"Open a PR for this branch."* The skill should detect the missing upstream and tell you to push first. No PR should be created.
+In a Claude Code session inside the repo, say: *"Open a PR for this branch."* The skill should refuse: it only opens PRs from `dev` into `main`. No PR should be created.
 
 ```bash
-gh pr list --state open --head feature/unpushed
+gh pr list --state open --head feature/not-dev
 # expect: no rows
 ```
 
 Switch back when done:
 
 ```bash
-git checkout feature/openpr-dryrun
+git checkout dev
+```
+
+## Check 1b: Refuse to run without a pushed branch
+
+Goal: confirm the skill stops when `dev` has no upstream. Reset the upstream temporarily:
+
+```bash
+git branch --unset-upstream dev
+```
+
+Ask Claude: *"Open a PR."* The skill should detect the missing upstream and tell you to run `git push -u origin dev` yourself. No PR should be created. Restore the upstream:
+
+```bash
+git push -u origin dev
 ```
 
 ## Check 2: Open a PR with a clean body
 
 Goal: confirm the PR body has no `Prompts:`, no `Assisted-by:`, no "Generated with Claude Code" emoji line.
 
-Ask Claude: *"Open a PR for this branch into main."* Verify after:
+Ask Claude: *"Open a PR."* Verify after (the skill should open with `--base main --head dev` automatically):
 
 ```bash
-PR=$(gh pr list --state open --head feature/openpr-dryrun --json number --jq '.[0].number')
+PR=$(gh pr list --state open --head dev --json number --jq '.[0].number')
 gh pr view "$PR" --json body --jq '.body' | grep -E '^(Assisted-by|Prompts):' && echo BAD || echo GOOD
 gh pr view "$PR" --json body --jq '.body' | grep -F 'Generated with' && echo BAD || echo GOOD
 gh pr view "$PR" --json body --jq '.body' | grep -E '🤖|✨|🎉' && echo BAD || echo GOOD
@@ -158,4 +172,4 @@ cd / && rm -rf /tmp/openpr-dryrun
 
 ## What "pass" looks like
 
-All five checks meet the expected output, and the throwaway repo's PR list shows no leftover open PRs after cleanup.
+All six checks (1, 1b, 2, 3, 4, 5) meet the expected output, and the throwaway repo's PR list shows no leftover open PRs after cleanup.
