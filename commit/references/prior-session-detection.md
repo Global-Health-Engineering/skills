@@ -172,8 +172,8 @@ Reconcile before writing the archive:
 1. Compute `claude_touched = {file_path from candidate session tool_use blocks}`.
 2. Compute `diff_paths = git diff --name-only HEAD` (and for new repos, `git ls-files --others --exclude-standard`).
 3. Pick one of these strategies and apply it consistently:
-   - **Strategy A (preferred): split.** Commit Claude-touched files first (Claude-assisted path with trailers and `prompts/` archive), then a separate commit for the human-touched-only files (human-only path, no trailers). Tell the user which two commits you intend before doing it.
-   - **Strategy B: scope the archive.** Write the archive file with `files_touched:` containing **only** the intersection of `claude_touched` and the staged set. Note the human-only files in the commit body so the audit trail is not silently wrong.
+   - **Strategy A (preferred): split.** Commit Claude-touched files first (Claude-assisted path with trailers and `prompts/` archive), then a separate commit for the human-touched-only files (human-only path with `Human-authored: true`). Tell the user which two commits you intend before doing it.
+   - **Strategy B: commit as mixed.** Commit everything together on the **mixed path**: both `Human-authored: true` and `Assisted-by:` trailers, and a `prompts/` archive whose `files_touched:` lists **only** the intersection of `claude_touched` and the staged set. The two trailers make the commit countable on both sides and identifiable as mixed.
 
 Do not silently list human-only files under `files_touched:` in the archive YAML. That is the line that, if it lies, breaks the audit purpose of the archive.
 

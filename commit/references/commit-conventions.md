@@ -87,7 +87,8 @@ Common trailers:
 
 - `Closes #123`: closes the referenced issue on merge.
 - `Refs #123`: references but doesn't close.
-- `Assisted-by: Claude <model-id>`: marks a Claude-assisted commit. This skill uses this trailer instead of the harness default `Co-Authored-By: Claude ...`. See the "Authorship attribution" section below.
+- `Assisted-by: Claude <model-id>`: marks a Claude-touched commit (Claude-assisted or mixed). This skill uses this trailer instead of the harness default `Co-Authored-By: Claude ...`. See the "Authorship attribution" section below.
+- `Human-authored: true`: marks a human-touched commit (human-only or mixed). The counterpart to `Assisted-by:`, so human work is positively countable rather than inferred from the absence of `Assisted-by:`. See the "Authorship attribution" section below.
 - `Co-Authored-By: Name <email>`: adds a human collaborator (GitHub recognizes this). Use only for actual human co-authors. Do NOT use for Claude.
 - `Signed-off-by: Name <email>`: DCO sign-off.
 - `Reverts: <sha>`: for revert commits.
@@ -100,19 +101,26 @@ Ordering convention used by this skill, top to bottom:
 1. `Prompts:` (content-like, references in-repo archive files).
 2. Issue references (`Closes`, `Refs`).
 3. Identity trailers (`Co-Authored-By` for humans, `Signed-off-by`).
-4. `Assisted-by:` (last, so it sits as the bottom-line attribution).
+4. `Human-authored: true` (authorship attribution, human side).
+5. `Assisted-by:` (last, so it sits as the bottom-line attribution).
+
+On a mixed commit both authorship trailers appear, `Human-authored: true` then `Assisted-by:`.
 
 ## Authorship attribution
 
-This skill distinguishes two kinds of commit:
+This skill distinguishes three kinds of commit:
 
-- **Claude-assisted.** Claude wrote or substantially edited the change. Commit gets an `Assisted-by: Claude <model-id>` trailer (e.g. `Assisted-by: Claude claude-opus-4-7`). The `model-id` should be the lowercased model name from the current environment, no friendly name.
-- **Human-only.** The human authored the change without Claude's involvement (typo fix, hand revision in editor, manual refactor). Commit gets no `Assisted-by:` trailer, no `Co-Authored-By: Claude`, no `Prompts:` trailer.
+- **Claude-assisted.** Claude wrote or substantially edited every change in the commit. Gets an `Assisted-by: Claude <model-id>` trailer (e.g. `Assisted-by: Claude claude-opus-4-8`). The `model-id` is the lowercased model name from the current environment, no friendly name.
+- **Human-only.** The human authored the change without Claude's involvement (typo fix, hand revision in editor, manual refactor). Gets a `Human-authored: true` trailer. No `Assisted-by:`, no `Co-Authored-By: Claude`, no `Prompts:`.
+- **Mixed.** The commit contains both Claude-touched and human-authored changes. Gets **both** `Human-authored: true` and `Assisted-by: Claude <model-id>`.
 
-**Absence is the signal.** Querying the log:
+**Both signals are explicit.** A positive `Human-authored:` trailer beats inferring human work from the absence of `Assisted-by:`, because absence also matches unmarked legacy commits and plain harness commits. Querying the log:
 
-- `git log --grep='^Assisted-by:'` lists Claude-assisted commits.
-- `git log --invert-grep --grep='^Assisted-by:'` lists human-only commits.
+- `git log --grep='^Assisted-by:'` lists Claude-touched commits (Claude-assisted + mixed).
+- `git log --grep='^Human-authored:'` lists human-touched commits (human-only + mixed).
+- A commit matching both is mixed; matching only one is that single category; matching neither is an unmarked legacy/harness commit (not classified by this skill).
+
+To count cleanly across many repos, run both greps with `--all` and compare the commit sets: the intersection is mixed, each grep minus the intersection is the pure category.
 
 ### Why `Assisted-by:` instead of `Co-Authored-By:`?
 
