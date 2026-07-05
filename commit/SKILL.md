@@ -14,7 +14,7 @@ This skill assumes the harness's built-in "Committing changes with git" instruct
 1. **Three commit paths** (Claude-assisted, human-only, mixed), detected automatically and confirmed before committing.
 2. **Conventional Commits guidance** (type, scope, subject, body rules).
 3. **A prompt archive** under `prompts/` at repo root, with a slim `Prompts:` trailer in the commit message that references archive IDs.
-4. **Queryable authorship trailers**: `Assisted-by: Claude <model-id>` for Claude-touched work (replacing the harness default `Co-Authored-By: Claude`), and `Human-authored: true` for human-touched work. A mixed commit carries both, so every commit is countable by one trailer or the other.
+4. **Queryable authorship trailers**: `Assisted-by: Claude <model-id>` for Claude-touched work (replacing the harness default `Co-Authored-By: Claude`), and `Human-authored: true` for human-touched work. A mixed commit carries both, so every commit is countable by one trailer or the other. Commits carrying `Human-authored: true` (human-only and mixed) are drafted by the skill but run by the user, so the human is the one asserting the trailer (see Step 5).
 5. **Splitting heuristics** for diffs that span multiple concerns.
 
 Push and pull-request creation are handled separately. Run `git push` yourself, then invoke the `open-pr` skill if you want a PR.
@@ -46,7 +46,7 @@ Before anything else, decide which path this commit follows. There are three:
 - **Human-only.** Every change in the diff was authored by the human without Claude's involvement.
 - **Mixed.** The diff contains both: some files (or hunks) Claude touched and some the human authored alone, and you are committing them together rather than splitting.
 
-The paths differ only in the authorship trailers, prompt capture, and examples; they are otherwise identical. Trailers by path: Claude-assisted gets `Assisted-by:`, human-only gets `Human-authored: true`, mixed gets both. This makes every commit countable: `git log --grep='^Assisted-by:'` finds Claude-touched commits, `git log --grep='^Human-authored:'` finds human-touched commits, and a commit matching both is mixed.
+The paths differ in the authorship trailers, prompt capture, examples, and who runs `git commit`; they are otherwise identical. Trailers by path: Claude-assisted gets `Assisted-by:`, human-only gets `Human-authored: true`, mixed gets both. This makes every commit countable: `git log --grep='^Assisted-by:'` finds Claude-touched commits, `git log --grep='^Human-authored:'` finds human-touched commits, and a commit matching both is mixed. On the human-only and mixed paths the agent prepares everything but the user runs the final `git commit` (see Step 5).
 
 **Heuristic.** Scan the current session for Claude tool calls that wrote to the working tree: `Edit`, `Write`, `NotebookEdit`, `MultiEdit`, or `Bash` commands that modified tracked files (`mv`, `rm`, `>`, `>>`, `sed -i`, code generators, formatters invoked by you, etc.). If such calls are present and their effects are still in the staged or unstaged diff, and the diff also contains files Claude did not touch, default to **mixed**. If Claude touched everything in the diff, default to **Claude-assisted**. If Claude touched nothing in the diff, default to **human-only**.
 
@@ -69,6 +69,7 @@ The path determines:
 | Step 4 (prompt capture) | Run | Skip | Run (Claude-touched files only) |
 | Step 5 trailers | `Prompts:` + `Assisted-by:` | `Human-authored: true` | `Prompts:` + `Human-authored: true` + `Assisted-by:` |
 | `prompts/` files written | Yes (one per selected prompt) | No | Yes (one per selected prompt) |
+| Who runs `git commit` (Step 5) | The agent | The user | The user |
 
 ### 1. Survey the state
 
@@ -216,6 +217,22 @@ The `Human-authored: true` trailer is the human-side counterpart to `Assisted-by
 
 The model ID is the lowercased model name from your environment (e.g. `claude-opus-4-8`, `claude-sonnet-4-6`). Format the trailer as `Assisted-by: Claude claude-opus-4-8`. When Step 0 fell back to a prior session, use the model from that session's first assistant turn instead (see `references/prior-session-detection.md`), not your current environment. If two candidate sessions used different models, list both comma-separated.
 
+**Who runs the commit:**
+
+`Human-authored: true` is only trustworthy when the human applies it. An agent asserting "a human, not an agent, wrote this" is unverifiable from the diff, and the Claude Code auto-mode classifier correctly denies agent-run commits carrying the trailer (Content Integrity / Impersonation). So the actor differs by path:
+
+- **Claude-assisted:** run `git commit` yourself, as usual.
+- **Human-only and mixed:** do NOT run `git commit`. Instead:
+  1. Complete everything up to the commit itself: stage the files (including any `prompts/*.md` on the mixed path) and get the drafted message approved.
+  2. Write the approved message, trailers included, verbatim to `.git/CLAUDE_COMMIT_MSG` (inside `.git/`, so it can never be tracked or staged).
+  3. Hand the commit to the user. Tell them to run it with the session's `!` prefix:
+
+     ```
+     ! git commit -F .git/CLAUDE_COMMIT_MSG
+     ```
+
+  4. Wait for the user to run it. Once they have, verify with `git log -1 --stat` and show the result. If the log does not show the new commit, the user has not run it yet; do not run `git commit` yourself as a shortcut.
+
 **Counting across repos:**
 
 - `git log --all --grep='^Assisted-by:'` lists every Claude-touched commit (Claude-assisted + mixed).
@@ -224,7 +241,7 @@ The model ID is the lowercased model name from your environment (e.g. `claude-op
 
 **After committing:**
 
-Run `git log -1 --stat` and show the user the result.
+Run `git log -1 --stat` and show the user the result. On the human-only and mixed paths this happens after the user reports having run the handed-over command.
 
 No post-commit fixup is needed. The `Prompts:` trailer in the commit message references the archive file by its `id`, and the archive file references the commit back through that same `id`. To go from an archive file to its commit, run `git log --all --grep='<id>'`. To go from a commit to its archive files, read the `Prompts:` trailer.
 
@@ -234,6 +251,7 @@ If the user asked to "commit and push" or "commit and open a PR", stop after the
 
 ## What this skill does NOT do
 
+- **Run human-only or mixed commits on the user's behalf.** Any commit carrying `Human-authored: true` is committed by the user, not the agent. The agent stages, drafts, and writes the message file; the human runs the final `git commit` (see "Who runs the commit" in Step 5), because only the human can credibly assert that trailer.
 - **Push.** This skill never runs `git push`. Run it yourself after the commit.
 - **Open pull requests.** See the `open-pr` skill.
 - **Rewrite shared history.** No `rebase -i`, no `commit --amend`. The harness's "create a new commit, never `--amend`" rule applies without exception.
@@ -246,6 +264,7 @@ If the user asked to "commit and push" or "commit and open a PR", stop after the
 
 ## Edge cases
 
+- **User insists the agent run a human-only or mixed commit:** if, after being handed the command, the user explicitly says "you commit it", omit `Human-authored: true` from the message and run the commit (a mixed commit keeps `Prompts:` and `Assisted-by:`). Tell the user the consequence: the commit will not match the `^Human-authored:` query, and a human-only commit committed this way matches neither trailer query, so it counts as an unmarked legacy/harness commit. Never run a commit that carries `Human-authored: true` yourself.
 - **Pre-commit hooks fail:** show the hook output, ask the user how to proceed. Don't silently `--no-verify`. Per harness rules, fix the underlying issue and create a new commit; do not `--amend`.
 - **Detached HEAD:** stop and explain; offer to create a branch from the current commit.
 - **Empty diff after staging:** confirm there's something to commit. `git commit --allow-empty` only on explicit request.

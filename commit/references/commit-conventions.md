@@ -114,6 +114,8 @@ This skill distinguishes three kinds of commit:
 - **Human-only.** The human authored the change without Claude's involvement (typo fix, hand revision in editor, manual refactor). Gets a `Human-authored: true` trailer. No `Assisted-by:`, no `Co-Authored-By: Claude`, no `Prompts:`.
 - **Mixed.** The commit contains both Claude-touched and human-authored changes. Gets **both** `Human-authored: true` and `Assisted-by: Claude <model-id>`.
 
+**The two trailers are asymmetric in who may apply them.** `Assisted-by:` is an agent admitting involvement; the agent applies it and runs the commit itself. `Human-authored: true` is an assertion of non-involvement that only the human can credibly make; commits carrying it (human-only and mixed) are prepared by the skill but run by the user (see "Who runs the commit" in `SKILL.md` Step 5). An agent-run commit with this trailer is denied by the Claude Code auto-mode classifier, and rightly so.
+
 **Both signals are explicit.** A positive `Human-authored:` trailer beats inferring human work from the absence of `Assisted-by:`, because absence also matches unmarked legacy commits and plain harness commits. Querying the log:
 
 - `git log --grep='^Assisted-by:'` lists Claude-touched commits (Claude-assisted + mixed).

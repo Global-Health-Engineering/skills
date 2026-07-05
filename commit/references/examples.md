@@ -152,7 +152,7 @@ s/effected/affected/
 Human-authored: true
 ```
 
-No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prompts/`. The human typed this fix in their editor; Claude was not involved. The `Human-authored: true` trailer is the positive signal.
+No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prompts/`. The human typed this fix in their editor; Claude was not involved. The `Human-authored: true` trailer is the positive signal. The agent drafts this message and writes it to `.git/CLAUDE_COMMIT_MSG`, but the user runs the commit (`! git commit -F .git/CLAUDE_COMMIT_MSG`); see "Who runs the commit" in `SKILL.md` Step 5.
 
 `git log --grep='^Human-authored:'` lists every commit where the human had a hand (human-only + mixed). Relying on the absence of `Assisted-by:` instead would also catch unmarked legacy commits and plain harness commits, so the explicit trailer is what makes the human bucket countable.
 
@@ -188,7 +188,7 @@ files_touched:
 Rewrite the CSV quote handling as a small state machine that tracks nesting depth.
 ```
 
-`CHANGELOG.md` is absent from `files_touched:` because Claude did not write it; recording it there would make the audit trail claim authorship Claude does not hold. The commit matches both `^Assisted-by:` and `^Human-authored:`, which is exactly what identifies it as mixed. When a clean split is feasible, prefer two commits (one per path) over one mixed commit; reach for mixed when the changes are genuinely intertwined or the user declines the split.
+`CHANGELOG.md` is absent from `files_touched:` because Claude did not write it; recording it there would make the audit trail claim authorship Claude does not hold. The commit matches both `^Assisted-by:` and `^Human-authored:`, which is exactly what identifies it as mixed. When a clean split is feasible, prefer two commits (one per path) over one mixed commit; reach for mixed when the changes are genuinely intertwined or the user declines the split. Because the message carries `Human-authored: true`, this commit is also run by the user, not the agent (see "Who runs the commit" in `SKILL.md` Step 5); the agent stages everything, including the `prompts/` file, and hands over the command.
 
 ## 7. Extracting prompts for a Methods section or supplementary material
 
