@@ -1,8 +1,8 @@
 # Examples
 
-Worked examples of commits produced by the `commit` skill, covering both paths (Claude-assisted and human-only) and showing the `prompts/` archive file alongside the commit message where relevant.
+Worked examples of commits produced by the `commit` skill, covering all three paths (Claude-assisted, human-only, mixed) and showing the `prompts/` archive file alongside the commit message where relevant.
 
-The skill overrides the harness default `Co-Authored-By: Claude ...` trailer. Claude-assisted commits get `Assisted-by: Claude <model-id>` as the last trailer; human-only commits get no authorship trailer at all.
+The skill overrides the harness default `Co-Authored-By: Claude ...` trailer. Claude-touched commits get `Assisted-by: Claude <model-id>` as the last trailer; human-touched commits get a `Human-authored: true` trailer. A mixed commit carries both, so every commit is positively countable by one query or the other.
 
 ## 1. Simple Claude-assisted commit, no prompts archived
 
@@ -148,11 +148,47 @@ Commit message:
 docs(abstract): fix typo in conclusion sentence
 
 s/effected/affected/
+
+Human-authored: true
 ```
 
-No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prompts/`. The human typed this fix in their editor; Claude was not involved.
+No `Assisted-by:`, no `Co-Authored-By:`, no `Prompts:`. No file written to `prompts/`. The human typed this fix in their editor; Claude was not involved. The `Human-authored: true` trailer is the positive signal. The agent drafts this message and writes it to `.git/CLAUDE_COMMIT_MSG`, but the user runs the commit (`! git commit -F .git/CLAUDE_COMMIT_MSG`); see "Who runs the commit" in `SKILL.md` Step 5.
 
-Absence of the `Assisted-by:` trailer is the signal. `git log --invert-grep --grep='^Assisted-by:'` lists every commit on this branch where the human worked alone.
+`git log --grep='^Human-authored:'` lists every commit where the human had a hand (human-only + mixed). Relying on the absence of `Assisted-by:` instead would also catch unmarked legacy commits and plain harness commits, so the explicit trailer is what makes the human bucket countable.
+
+## 6b. Mixed commit (human + Claude in one commit)
+
+The user hand-edited `CHANGELOG.md` while Claude rewrote `src/parser.js` in the same session, and they chose to commit both together rather than split.
+
+Commit message:
+
+```
+feat(parser): support nested quotes; note in changelog
+
+Claude rewrote the quote-nesting state machine in the parser. The
+changelog entry was written by hand.
+
+Prompts:
+- 2026-06-24-001-nested-quote-state-machine
+Human-authored: true
+Assisted-by: Claude claude-opus-4-8
+```
+
+Companion archive file `prompts/2026-06-24-001-nested-quote-state-machine.md` lists **only** the Claude-touched file under `files_touched:`:
+
+```markdown
+---
+id: 2026-06-24-001-nested-quote-state-machine
+timestamp: 2026-06-24T11:20:05+02:00
+model: claude-opus-4-8
+files_touched:
+  - src/parser.js
+---
+
+Rewrite the CSV quote handling as a small state machine that tracks nesting depth.
+```
+
+`CHANGELOG.md` is absent from `files_touched:` because Claude did not write it; recording it there would make the audit trail claim authorship Claude does not hold. The commit matches both `^Assisted-by:` and `^Human-authored:`, which is exactly what identifies it as mixed. When a clean split is feasible, prefer two commits (one per path) over one mixed commit; reach for mixed when the changes are genuinely intertwined or the user declines the split. Because the message carries `Human-authored: true`, this commit is also run by the user, not the agent (see "Who runs the commit" in `SKILL.md` Step 5); the agent stages everything, including the `prompts/` file, and hands over the command.
 
 ## 7. Extracting prompts for a Methods section or supplementary material
 
@@ -251,7 +287,7 @@ Fix:
 Assisted-by: Claude claude-opus-4-7
 ```
 
-Bad: `Assisted-by:` trailer on a human-only commit. Defeats the purpose of having two paths.
+Bad: `Assisted-by:` trailer on a human-only commit. Miscounts human work as Claude-touched.
 
 ```
 docs(abstract): fix typo in conclusion sentence
@@ -259,7 +295,17 @@ docs(abstract): fix typo in conclusion sentence
 Assisted-by: Claude claude-opus-4-7
 ```
 
-Fix: omit the trailer entirely on the human-only path.
+Fix: use `Human-authored: true` on the human-only path; reserve `Assisted-by:` for commits Claude actually touched.
+
+```
+docs(abstract): fix typo in conclusion sentence
+
+Human-authored: true
+```
+
+Bad: human-only commit with no authorship trailer at all (the pre-`Human-authored:` behaviour). The commit is then indistinguishable from an unmarked legacy or harness commit and is not countable as human work.
+
+Fix: add `Human-authored: true`. Only genuinely Claude-touched commits omit it (they carry `Assisted-by:` instead).
 
 Bad: `Assisted-by:` trailer placed before issue references (out of order).
 

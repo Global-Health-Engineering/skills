@@ -41,7 +41,7 @@ git log --all --grep="$id" --pretty=format:'%h %s'   # expect: one hit
 
 ## Check 2: Human-only path
 
-Goal: verify the skill detects "no Claude tool calls" and writes a clean commit with no `Assisted-by:`, no `Prompts:`, no `prompts/` file.
+Goal: verify the skill detects "no Claude tool calls" and writes a commit with `Human-authored: true` and no `Assisted-by:`, no `Prompts:`, no `prompts/` file.
 
 ```bash
 # Edit by hand (no Claude tool call):
@@ -54,15 +54,34 @@ Verify:
 
 ```bash
 git log -1 --format='%B'
+git log -1 --format='%B' | grep '^Human-authored: true'              && echo GOOD || echo BAD
 git log -1 --format='%B' | grep -E '^(Assisted-by|Prompts|Co-Authored-By):' && echo BAD || echo GOOD
 ls prompts/ | wc -l                  # expect: still 1 (no new file)
+```
+
+## Check 2b: Mixed path
+
+Goal: verify a diff that mixes Claude-touched and human-touched files, committed together (split declined), gets **both** authorship trailers and a `prompts/` archive scoped to the Claude-touched file only.
+
+```bash
+# Claude edits one file (via a tool call), human edits another by hand:
+printf "\nHand-written changelog note.\n" >> CHANGELOG.md
+```
+
+Ask Claude to edit `manuscript/abstract.qmd` in the same session, then say: *"Commit both together as mixed, don't split."* Verify:
+
+```bash
+git log -1 --format='%B' | grep '^Human-authored: true'        && echo GOOD || echo BAD
+git log -1 --format='%B' | grep '^Assisted-by:'                && echo GOOD || echo BAD
+# The archive for this commit must NOT list CHANGELOG.md under files_touched:
+grep -L 'CHANGELOG.md' prompts/*.md >/dev/null && echo "check files_touched scope by hand"
 ```
 
 ## Check 3: Override
 
 Goal: confirm the user can force the human-only path even when Claude touched files this session.
 
-In the same session, ask Claude to edit `manuscript/abstract.qmd` again, then say: *"Commit this as human-only."* Verify the resulting commit has no `Assisted-by:` trailer.
+In the same session, ask Claude to edit `manuscript/abstract.qmd` again, then say: *"Commit this as human-only."* Verify the resulting commit has `Human-authored: true` and no `Assisted-by:` trailer.
 
 ## Check 4: Claude-assisted commit without archive
 
@@ -81,10 +100,12 @@ ls prompts/ | wc -l                  # expect: unchanged from Check 1
 Goal: confirm the Methods-section recipes in `references/examples.md` actually work against your log.
 
 ```bash
-git log --grep='^Assisted-by:' --pretty=format:'%h  %s'
-git log --invert-grep --grep='^Assisted-by:' --pretty=format:'%h  %s'
+git log --grep='^Assisted-by:' --pretty=format:'%h  %s'      # Claude-touched (assisted + mixed)
+git log --grep='^Human-authored:' --pretty=format:'%h  %s'   # human-touched (human-only + mixed)
 ls prompts/ && cat prompts/*.md
 ```
+
+A commit matching both greps is mixed; matching only one is that pure category; matching neither is an unmarked legacy/harness commit.
 
 Also try the Markdown-table builder from example 7 in `references/examples.md`.
 
