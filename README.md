@@ -48,3 +48,7 @@ Copy the two folders instead of linking them if you do not want to keep the clon
 ## Where the skills came from
 
 Both skills were developed in a personal skill collection between May and July 2026 and moved here with their git history. The `prompts/` folder holds the prompts behind the Claude-assisted commits in that history, written by the `commit` skill itself.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
