@@ -94,7 +94,7 @@ Use the commit list and the diff stat to understand what the PR will contain. A 
 **Two body rules specific to this skill:**
 
 - Do **NOT** include `Prompts:` or `Assisted-by:` trailers in the PR body. They belong in commit messages only. The PR body is for reviewers; commit messages are for archaeology.
-- Do **NOT** include the "Generated with Claude Code" emoji line (`🤖 Generated with [Claude Code](...)`) that the harness's default template suggests. The user's global guidance forbids emojis in any output.
+- Do **NOT** include the "Generated with Claude Code" emoji line (`🤖 Generated with [Claude Code](...)`) that the harness's default template suggests. The PR body is for reviewers, so this skill keeps it free of emoji and of tool advertising.
 
 Show the drafted title and body to the user before opening the PR.
 
@@ -157,7 +157,7 @@ If **yes**:
 - **Detect the base branch.** Base is hardcoded to `main`. No `gh repo view --json defaultBranchRef` call, no fallback to `master`/`trunk`.
 - **Force-push.** Never `git push --force` or `--force-with-lease`. Out of scope.
 - **Echo commit-level attribution into the PR body.** `Prompts:` and `Assisted-by:` trailers stay in commit messages.
-- **Add emoji to the PR body.** No "Generated with Claude Code" line, no decorative emoji anywhere. The user's global guidance forbids emojis in any output.
+- **Add emoji to the PR body.** No "Generated with Claude Code" line, no decorative emoji anywhere. This is a convention of the skill, independent of any user setting.
 - **Delete tracked files.** The Test-plan runner only deletes artifacts the run itself produced; files tracked in git (`git ls-files`) are never touched.
 
 ---

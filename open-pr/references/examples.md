@@ -22,7 +22,7 @@ For a single-commit PR tightening an abstract:
 - [ ] Contribution sentence appears at the end of paragraph one.
 ```
 
-No `Prompts:` trailer. No `Assisted-by:` trailer. No "Generated with Claude Code" emoji line. The user's global guidance forbids emojis in any output.
+No `Prompts:` trailer. No `Assisted-by:` trailer. No "Generated with Claude Code" emoji line. The body is for reviewers.
 
 ## 2. PR body for a multi-commit refactor
 
@@ -132,7 +132,7 @@ Tightens abstract.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-Fix: remove it. The user's global guidance forbids emojis in any output.
+Fix: remove it. The skill keeps PR bodies free of emoji and of tool advertising.
 
 Bad: Test-plan runner ticking boxes that were never verified.
 
