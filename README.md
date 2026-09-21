@@ -6,14 +6,16 @@
 
 Claude Code skills from [Global Health Engineering](https://ghe.ethz.ch) at ETH Zurich.
 
+Documentation site: https://global-health-engineering.github.io/skills/
+
 Experimental. The skills are being trialled in the [agentsforsci-ghe](https://github.com/agentsforsci-ghe) workshop, and anything here can change without notice. Feedback is welcome as an [issue](https://github.com/Global-Health-Engineering/skills/issues).
 
 ## Skills
 
 | Skill | What it does |
 |-------|--------------|
-| [`commit`](commit/) | Turns your working changes into a commit with a Conventional Commits message. Marks each commit as Claude-assisted, human-only, or mixed with trailers you can count in `git log`, and can archive the prompts behind a Claude-assisted commit under `prompts/`. Does not push. |
-| [`open-pr`](open-pr/) | Opens a GitHub pull request from `dev` into `main` with a clean body (no attribution trailers, no emoji), and can run through the pull request's test plan checklist. Does not push. |
+| [`commit`](commit/SKILL.md) | Turns your working changes into a commit with a Conventional Commits message. Marks each commit as Claude-assisted, human-only, or mixed with trailers you can count in `git log`, and can archive the prompts behind a Claude-assisted commit under `prompts/`. Does not push. |
+| [`open-pr`](open-pr/SKILL.md) | Opens a GitHub pull request from `dev` into `main` with a clean body (no attribution trailers, no emoji), and can run through the pull request's test plan checklist. Does not push. |
 
 Each skill's `SKILL.md` is its full documentation. The `references/` folder holds worked examples, and `dry-run.md` is a script for trying the skill in a throwaway repository.
 

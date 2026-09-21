@@ -1,0 +1,48 @@
+# Build the skill-collection site with skilldown and deploy it to
+# GitHub Pages. Installed by skilldown::use_skilldown_github_pages().
+# The Quarto version is pinned so CI renders match local ones.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+name: publish-site.yaml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.9.37
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install skilldown
+        run: Rscript -e 'install.packages("pak"); pak::pak("larnsce/skilldown@dev")'
+
+      - name: Build site
+        run: Rscript -e 'skilldown::build_site()'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
