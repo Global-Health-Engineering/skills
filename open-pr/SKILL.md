@@ -1,6 +1,14 @@
 ---
 name: open-pr
-description: Open a GitHub pull request from `dev` into `main` and, on request, run through the PR's Test plan checklist. Always uses head=dev, base=main; refuses to open a PR from any other branch. Assumes the branch is already committed and pushed; this skill never pushes on the user's behalf. Triggers on explicit verbs: "open a PR", "make a pull request", "pr", "pull request". Strips Claude attribution from the PR body (no Prompts: trailer, no Assisted-by: trailer, no Generated-with emoji line). Use this skill after the `commit` skill or after a manual commit; for committing itself, use `commit`.
+description: >-
+  Open a GitHub pull request from `dev` into `main` and, on request, run through
+  the PR's Test plan checklist. Always uses head=dev, base=main; refuses to open
+  a PR from any other branch. Assumes the branch is already committed and
+  pushed; this skill never pushes on the user's behalf. Triggers on explicit
+  verbs: "open a PR", "make a pull request", "pr", "pull request". Strips Claude
+  attribution from the PR body (no Prompts: trailer, no Assisted-by: trailer, no
+  Generated-with emoji line). Use this skill after the `commit` skill or after a
+  manual commit; for committing itself, use `commit`.
 ---
 
 # open-pr
@@ -94,7 +102,7 @@ Use the commit list and the diff stat to understand what the PR will contain. A 
 **Two body rules specific to this skill:**
 
 - Do **NOT** include `Prompts:` or `Assisted-by:` trailers in the PR body. They belong in commit messages only. The PR body is for reviewers; commit messages are for archaeology.
-- Do **NOT** include the "Generated with Claude Code" emoji line (`🤖 Generated with [Claude Code](...)`) that the harness's default template suggests. The PR body is for reviewers, so this skill keeps it free of emoji and of tool advertising.
+- Do **NOT** include the "Generated with Claude Code" emoji line (`🤖 Generated with [Claude Code](https://claude.com/claude-code)`) that the harness's default template suggests. The PR body is for reviewers, so this skill keeps it free of emoji and of tool advertising.
 
 Show the drafted title and body to the user before opening the PR.
 
