@@ -41,6 +41,16 @@ ln -s "$PWD/open-pr" ~/.claude/skills/open-pr
 
 Copy the two folders instead of linking them if you do not want to keep the clone. To install for one project only, use that project's `.claude/skills/` folder instead of `~/.claude/skills/`. Start a new Claude Code session afterwards.
 
+## Deactivate
+
+Installed as a plugin, the skills go away with one command inside Claude Code. Use `disable` to keep them installed but switched off.
+
+```
+/plugin uninstall ghe-skills@ghe-skills
+```
+
+Installed by symlink or copy, delete the two folders from `~/.claude/skills/` (or the project's `.claude/skills/`).
+
 ## What the skills assume
 
 - `open-pr` uses the GitHub CLI (`gh`) and only opens pull requests from a branch named `dev` into `main`.
