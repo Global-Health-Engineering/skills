@@ -1,6 +1,14 @@
 ---
 name: open-pr
-description: Open a GitHub pull request from `dev` into `main` and, on request, run through the PR's Test plan checklist. Always uses head=dev, base=main; refuses to open a PR from any other branch. Assumes the branch is already committed and pushed; this skill never pushes on the user's behalf. Triggers on explicit verbs: "open a PR", "make a pull request", "pr", "pull request". Strips Claude attribution from the PR body (no Prompts: trailer, no Assisted-by: trailer, no Generated-with emoji line). Use this skill after the `commit` skill or after a manual commit; for committing itself, use `commit`.
+description: >-
+  Open a GitHub pull request from `dev` into `main` and, on request, run through
+  the PR's Test plan checklist. Always uses head=dev, base=main; refuses to open
+  a PR from any other branch. Assumes the branch is already committed and
+  pushed; this skill never pushes on the user's behalf. Triggers on explicit
+  verbs: "open a PR", "make a pull request", "pr", "pull request". Strips Claude
+  attribution from the PR body (no Prompts: trailer, no Assisted-by: trailer, no
+  Generated-with emoji line). Use this skill after the `commit` skill or after a
+  manual commit; for committing itself, use `commit`.
 ---
 
 # open-pr

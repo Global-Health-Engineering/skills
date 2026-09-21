@@ -1,6 +1,15 @@
 ---
 name: commit
-description: Commit staged or unstaged changes with a well-crafted Conventional Commits message. Detects whether the work was Claude-assisted, human-only, or a mix of both, and marks the commit with queryable authorship trailers (Assisted-by for Claude, Human-authored for the human, both for mixed) plus a prompts/ archive for Claude-touched work. Use this skill when the user asks to commit. Triggers on explicit git verbs: "commit", "save my changes to git", "make a commit with the prompts". Do NOT auto-trigger on softer phrases like "ship it" or "wrap this up" unless the user has also named a git action. Push and PR creation are out of scope; see the `open-pr` skill for opening a pull request.
+description: >-
+  Commit staged or unstaged changes with a well-crafted Conventional Commits
+  message. Detects whether the work was Claude-assisted, human-only, or a mix of
+  both, and marks the commit with queryable authorship trailers (Assisted-by for
+  Claude, Human-authored for the human, both for mixed) plus a prompts/ archive
+  for Claude-touched work. Use this skill when the user asks to commit. Triggers
+  on explicit git verbs: "commit", "save my changes to git", "make a commit with
+  the prompts". Do NOT auto-trigger on softer phrases like "ship it" or "wrap
+  this up" unless the user has also named a git action. Push and PR creation are
+  out of scope; see the `open-pr` skill for opening a pull request.
 ---
 
 # commit
