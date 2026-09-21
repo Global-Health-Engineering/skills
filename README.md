@@ -43,9 +43,10 @@ Copy the two folders instead of linking them if you do not want to keep the clon
 
 ## Deactivate
 
-Installed as a plugin, the skills go away with one command inside Claude Code. Use `disable` to keep them installed but switched off.
+Installed as a plugin, the skills go away with one command inside Claude Code. The first keeps them installed but switched off, the second removes them.
 
 ```
+/plugin disable ghe-skills@ghe-skills
 /plugin uninstall ghe-skills@ghe-skills
 ```
 
