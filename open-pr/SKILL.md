@@ -3,8 +3,9 @@ name: open-pr
 description: >-
   Open a GitHub pull request from `dev` into `main` and, on request, run through
   the PR's Test plan checklist. Always uses head=dev, base=main; refuses to open
-  a PR from any other branch. Assumes the branch is already committed and
-  pushed; this skill never pushes on the user's behalf. Triggers on explicit
+  a PR from any other branch. Assumes the work is committed; pushes `dev`
+  first when it has unpushed commits, sets the upstream if it is missing, and
+  reports how many commits went up. Never force-pushes. Triggers on explicit
   verbs: "open a PR", "make a pull request", "pr", "pull request". Strips Claude
   attribution from the PR body (no Prompts: trailer, no Assisted-by: trailer, no
   Generated-with emoji line). Use this skill after the `commit` skill or after a
@@ -13,7 +14,7 @@ description: >-
 
 # open-pr
 
-A skill for taking an already-pushed `dev` branch and opening a clean GitHub pull request into `main`, then optionally walking the PR's Test plan checklist to verify the change end-to-end.
+A skill for taking a committed `dev` branch, pushing it, and opening a clean GitHub pull request into `main`, then optionally walking the PR's Test plan checklist to verify the change end-to-end.
 
 **Branch convention: this skill always opens PRs from `dev` into `main`.** No feature branches, no other base, no auto-detection of the default branch. If the current branch is not `dev`, stop and tell the user to switch.
 
@@ -21,14 +22,14 @@ This skill picks up where the `commit` skill leaves off. It assumes:
 
 1. The current branch is `dev`.
 2. `dev` has at least one commit ahead of `main`.
-3. `dev` is pushed to a remote with an upstream set.
+3. A remote named `origin` exists and the user can push to it.
 4. The user has explicitly asked to open a PR.
 
-If any of those are not true, stop and tell the user what to do first. This skill never pushes on the user's behalf.
+If any of those are not true, stop and tell the user what to do first. Pushing is part of this skill: it pushes `dev` before the pull request is drafted and says how many commits went up.
 
 What this skill adds on top of the harness's default `gh pr create` behavior:
 
-- **A pre-flight check** that the branch is pushed and ahead of its base.
+- **A push step** that counts the commits `origin/dev` does not have yet, pushes them with the upstream set, and reports the count and the list before anything is drafted.
 - **Two body rules**: no commit-level attribution trailers (`Prompts:`, `Assisted-by:`) in the PR body; no "Generated with Claude Code" emoji line.
 - **A Test-plan runner** that walks `- [ ]` checkboxes in the PR body, runs the cheapest verification per item, ticks the boxes via `gh pr edit`, and cleans render artifacts.
 
@@ -43,7 +44,7 @@ Do NOT auto-trigger on:
 - "ship it", "wrap this up", "I'm done", "let's submit this" (these often mean "summarize" or "move on", not "open a PR").
 - A commit just landing (the `commit` skill explicitly hands off; the user must still say "open a PR").
 
-If the user says "commit and open a PR", let the `commit` skill handle the commit first, then this skill handles the PR after they have pushed.
+If the user says "commit and open a PR", let the `commit` skill handle the commit first, then this skill pushes and opens the PR.
 
 ---
 
@@ -51,25 +52,40 @@ If the user says "commit and open a PR", let the `commit` skill handle the commi
 
 Follow these steps in order. Skip a step only if the user has already done it or explicitly opted out.
 
-### 1. Verify branch state
+### 1. Verify branch state, then push
 
 Run these in one batch:
 
 ```bash
 git status
 git branch --show-current
-git log @{u}.. --oneline 2>/dev/null || echo "NO_UPSTREAM"
-git log @{u}..HEAD --oneline 2>/dev/null
+git fetch origin
 git rev-parse --verify origin/main 2>/dev/null || echo "NO_MAIN"
+git rev-parse --verify origin/dev 2>/dev/null || echo "NO_REMOTE_DEV"
+git log origin/main..HEAD --oneline
+git log origin/dev..HEAD --oneline 2>/dev/null
 ```
 
 From the output, confirm:
 
 - **Current branch is `dev`.** If `git branch --show-current` is anything other than `dev`, stop. Tell the user this skill only opens PRs from `dev` into `main`, and ask them to switch (`git checkout dev`) or merge their work into `dev` first. Do not offer to open the PR from a different head.
-- **An upstream exists.** If `git log @{u}..` fails with "no upstream" or you see `NO_UPSTREAM`, stop. Tell the user `dev` is not pushed and they need to run `git push -u origin dev` themselves. This skill does not push.
 - **`main` exists on the remote.** If `git rev-parse --verify origin/main` fails or you see `NO_MAIN`, stop. Tell the user there is no `origin/main` to target and ask how to proceed (the convention assumes a `main` branch exists).
 - **`dev` is ahead of `main`.** Check with `git log origin/main..HEAD --oneline`; if empty, there is nothing to PR. Stop and tell the user `dev` has no commits beyond `main`.
-- **Working tree is clean (or at least: the user is OK with uncommitted work being excluded).** If `git status` shows uncommitted or unpushed changes that look intentional, flag them: "You have uncommitted changes in X, Y. They will not be in the PR. Continue?"
+- **Working tree is clean (or at least: the user is OK with uncommitted work being excluded).** If `git status` shows uncommitted changes that look intentional, flag them: "You have uncommitted changes in X, Y. They will not be in the PR. Continue?"
+
+Then push. The commits to push are the `git log origin/dev..HEAD` list, or every commit on the branch when you saw `NO_REMOTE_DEV`. Push with the upstream set, so a branch without one gets it now:
+
+```bash
+git push -u origin dev
+```
+
+Report the push in one line before moving on, so the user knows what left their machine:
+
+- Commits went up: "Pushed 3 commits to origin/dev:" followed by the list from before the push, one commit per line.
+- Nothing to push: "origin/dev already has every commit, nothing pushed."
+- `origin/dev` did not exist: "Created origin/dev with 3 commits:" and the list.
+
+If the push is rejected because `origin/dev` has commits the local branch does not, stop. Show the error and tell the user to pull or merge first. Never force-push.
 
 ### 2. Survey the commits on the branch
 
@@ -159,11 +175,11 @@ If **yes**:
 
 ## What this skill does NOT do
 
-- **Push.** This skill never runs `git push`. If `dev` is not pushed, stop and tell the user.
+- **Push anything but `dev`.** The push step runs `git push -u origin dev` and nothing else: no tags, no other branches, no `--all`.
 - **Commit.** See the `commit` skill for crafting commits with Conventional Commits format and prompt archiving.
 - **Open PRs from non-`dev` branches.** The convention is fixed: head is always `dev`, base is always `main`. If the user is on a feature branch, this skill stops; it does not offer to use that branch as the head.
 - **Detect the base branch.** Base is hardcoded to `main`. No `gh repo view --json defaultBranchRef` call, no fallback to `master`/`trunk`.
-- **Force-push.** Never `git push --force` or `--force-with-lease`. Out of scope.
+- **Force-push.** Never `git push --force` or `--force-with-lease`. A rejected push stops the skill.
 - **Echo commit-level attribution into the PR body.** `Prompts:` and `Assisted-by:` trailers stay in commit messages.
 - **Add emoji to the PR body.** No "Generated with Claude Code" line, no decorative emoji anywhere. This is a convention of the skill, independent of any user setting.
 - **Delete tracked files.** The Test-plan runner only deletes artifacts the run itself produced; files tracked in git (`git ls-files`) are never touched.
@@ -174,7 +190,8 @@ If **yes**:
 
 - **Current branch is not `dev`:** stop. Tell the user this skill only opens PRs from `dev` into `main` and ask them to switch (`git checkout dev`) or merge the feature branch into `dev` first. Do not offer to use a different head.
 - **`main` does not exist on the remote:** stop. The convention assumes a `main` branch; ask the user how to proceed (e.g. create `main` from the current default, or use a one-off `gh pr create --base <other> --head dev` outside this skill).
-- **`dev` exists locally but not on the remote (no upstream):** stop. Tell the user to run `git push -u origin dev` themselves. This skill does not push.
+- **`dev` exists locally but not on the remote (no upstream):** the push step creates it with `git push -u origin dev` and reports "Created origin/dev with N commits".
+- **The push is rejected** because `origin/dev` has commits the local branch does not: stop, show the error, and tell the user to pull or merge first. Never force-push.
 - **An open PR from `dev` to `main` already exists:** `gh pr create` will fail. Surface the existing PR's URL to the user and ask whether they want to update it (use `gh pr edit`) or close it and open a new one.
 - **PR template in `.github/pull_request_template.md`:** read it, prefer its sections over this skill's default scaffold, but still enforce the two body rules (no commit-level trailers, no emoji).
 - **Test plan has no `- [ ]` items:** nothing to run. Tell the user the body has no checklist and stop.

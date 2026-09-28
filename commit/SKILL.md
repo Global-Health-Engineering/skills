@@ -9,7 +9,7 @@ description: >-
   on explicit git verbs: "commit", "save my changes to git", "make a commit with
   the prompts". Do NOT auto-trigger on softer phrases like "ship it" or "wrap
   this up" unless the user has also named a git action. Push and PR creation are
-  out of scope; see the `open-pr` skill for opening a pull request.
+  out of scope; the `open-pr` skill pushes `dev` and opens the pull request.
 ---
 
 # commit
@@ -26,7 +26,7 @@ This skill assumes the harness's built-in "Committing changes with git" instruct
 4. **Queryable authorship trailers**: `Assisted-by: Claude <model-id>` for Claude-touched work (replacing the harness default `Co-Authored-By: Claude`), and `Human-authored: true` for human-touched work. A mixed commit carries both, so every commit is countable by one trailer or the other. Commits carrying `Human-authored: true` (human-only and mixed) are drafted by the skill but run by the user, so the human is the one asserting the trailer (see Step 5).
 5. **Splitting heuristics** for diffs that span multiple concerns.
 
-Push and pull-request creation are handled separately. Run `git push` yourself, then invoke the `open-pr` skill if you want a PR.
+Push and pull-request creation are handled by the `open-pr` skill, which pushes `dev`, reports how many commits went up, and then opens the pull request. A push on its own, without a pull request, is yours to run.
 
 ---
 
@@ -39,7 +39,7 @@ Do NOT auto-trigger on:
 - "ship it", "wrap this up", "I'm done", "let's submit this" (these often mean "summarize" or "move on", not "commit").
 - General editing or reviewing requests.
 
-If the user says "commit and push" or "commit and open a PR", run this skill for the commit, then hand off: tell the user to run `git push` themselves, and invoke `open-pr` if they want a PR.
+If the user says "commit and open a PR", run this skill for the commit, then hand off to `open-pr`, which pushes and reports before it opens the PR. If the user says "commit and push" with no pull request in mind, run this skill for the commit and tell the user the push is theirs to run.
 
 ---
 
@@ -254,14 +254,14 @@ Run `git log -1 --stat` and show the user the result. On the human-only and mixe
 
 No post-commit fixup is needed. The `Prompts:` trailer in the commit message references the archive file by its `id`, and the archive file references the commit back through that same `id`. To go from an archive file to its commit, run `git log --all --grep='<id>'`. To go from a commit to its archive files, read the `Prompts:` trailer.
 
-If the user asked to "commit and push" or "commit and open a PR", stop after the commit. Tell them the commit is done and that push is theirs to run; if they want a PR, point them at the `open-pr` skill.
+If the user asked to "commit and open a PR", stop after the commit and hand off to the `open-pr` skill, which pushes and reports how many commits went up. If they asked to "commit and push" with no pull request in mind, tell them the commit is done and that the push is theirs to run.
 
 ---
 
 ## What this skill does NOT do
 
 - **Run human-only or mixed commits on the user's behalf.** Any commit carrying `Human-authored: true` is committed by the user, not the agent. The agent stages, drafts, and writes the message file; the human runs the final `git commit` (see "Who runs the commit" in Step 5), because only the human can credibly assert that trailer.
-- **Push.** This skill never runs `git push`. Run it yourself after the commit.
+- **Push.** This skill never runs `git push`. The `open-pr` skill pushes when it opens the pull request; a push without a pull request is yours to run.
 - **Open pull requests.** See the `open-pr` skill.
 - **Rewrite shared history.** No `rebase -i`, no `commit --amend`. The harness's "create a new commit, never `--amend`" rule applies without exception.
 - **Use `Co-Authored-By: Claude`.** This skill replaces the harness default with `Assisted-by: Claude <model-id>` on Claude-touched commits (Claude-assisted and mixed) and omits it entirely on human-only commits. Do not let the harness re-introduce `Co-Authored-By`. (`Human-authored: true` marks the human side; it is not a substitute for a `Co-Authored-By` naming a real human collaborator, which you may still add when one exists.)

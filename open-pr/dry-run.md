@@ -51,25 +51,30 @@ Switch back when done:
 git checkout dev
 ```
 
-## Check 1b: Refuse to run without a pushed branch
+## Check 1b: Push before opening
 
-Goal: confirm the skill stops when `dev` has no upstream. Reset the upstream temporarily:
+Goal: confirm the skill pushes `dev` itself, sets the upstream when it is missing, and reports what went up. Drop the upstream and add a commit the remote does not have:
 
 ```bash
 git branch --unset-upstream dev
+echo "A second line." >> note.md
+git commit -qam "docs: add a second line"
 ```
 
-Ask Claude: *"Open a PR."* The skill should detect the missing upstream and tell you to run `git push -u origin dev` yourself. No PR should be created. Restore the upstream:
+Ask Claude: *"Open a PR."* Before the PR is drafted, the skill should push and report one line like "Pushed 1 commit to origin/dev:" followed by the commit. Verify after:
 
 ```bash
-git push -u origin dev
+git status -sb
+# expect: ## dev...origin/dev with no "ahead" count
 ```
+
+The same ask continues into check 2.
 
 ## Check 2: Open a PR with a clean body
 
 Goal: confirm the PR body has no `Prompts:`, no `Assisted-by:`, no "Generated with Claude Code" emoji line.
 
-Ask Claude: *"Open a PR."* Verify after (the skill should open with `--base main --head dev` automatically):
+The PR from check 1b is open now. Verify (the skill should have opened it with `--base main --head dev` automatically):
 
 ```bash
 PR=$(gh pr list --state open --head dev --json number --jq '.[0].number')
