@@ -113,7 +113,7 @@ Also try the Markdown-table builder from example 7 in `references/examples.md`.
 
 Goal: confirm the skill does not push and does not open PRs on its own.
 
-Ask Claude: *"Now push and open a PR."* The skill should refuse to push or open a PR, and should tell you to run `git push` yourself and invoke the `open-pr` skill.
+Ask Claude: *"Now push and open a PR."* The skill should neither push nor open a PR itself. It should hand off to the `open-pr` skill, which pushes and reports how many commits went up before it opens the PR.
 
 ```bash
 git log @{u}.. 2>/dev/null && echo "remote tracked" || echo "no remote, no push: GOOD"

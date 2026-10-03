@@ -15,7 +15,7 @@ Experimental. The skills are being trialled in the [agentsforsci-ghe](https://gi
 | Skill | What it does |
 |-------|--------------|
 | [`commit`](commit/SKILL.md) | Turns your working changes into a commit with a Conventional Commits message. Marks each commit as Claude-assisted, human-only, or mixed with trailers you can count in `git log`, and can archive the prompts behind a Claude-assisted commit under `prompts/`. Does not push. |
-| [`open-pr`](open-pr/SKILL.md) | Opens a GitHub pull request from `dev` into `main` with a clean body (no attribution trailers, no emoji), and can run through the pull request's test plan checklist. Does not push. |
+| [`open-pr`](open-pr/SKILL.md) | Pushes `dev` and tells you how many commits went up, then opens a GitHub pull request from `dev` into `main` with a clean body (no attribution trailers, no emoji), and can run through the pull request's test plan checklist. Never force-pushes. |
 
 Each skill's `SKILL.md` is its full documentation. The `references/` folder holds worked examples, and `dry-run.md` is a script for trying the skill in a throwaway repository.
 
@@ -41,9 +41,20 @@ ln -s "$PWD/open-pr" ~/.claude/skills/open-pr
 
 Copy the two folders instead of linking them if you do not want to keep the clone. To install for one project only, use that project's `.claude/skills/` folder instead of `~/.claude/skills/`. Start a new Claude Code session afterwards.
 
+## Deactivate
+
+Installed as a plugin, the skills go away with one command inside Claude Code. The first keeps them installed but switched off, the second removes them.
+
+```
+/plugin disable ghe-skills@ghe-skills
+/plugin uninstall ghe-skills@ghe-skills
+```
+
+Installed by symlink or copy, delete the two folders from `~/.claude/skills/` (or the project's `.claude/skills/`).
+
 ## What the skills assume
 
-- `open-pr` uses the GitHub CLI (`gh`) and only opens pull requests from a branch named `dev` into `main`.
+- `open-pr` uses the GitHub CLI (`gh`), pushes `dev` to `origin` before it opens the pull request, and only opens pull requests from a branch named `dev` into `main`.
 - `commit` replaces the default `Co-Authored-By: Claude` trailer with `Assisted-by: Claude <model-id>`. Commits that carry `Human-authored: true` are drafted by the skill and run by you, because only you can vouch for that claim.
 - A change that you instructed and Claude executed counts as Claude-assisted. Whether that is the right classification is an open question.
 

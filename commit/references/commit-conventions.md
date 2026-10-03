@@ -110,7 +110,7 @@ On a mixed commit both authorship trailers appear, `Human-authored: true` then `
 
 This skill distinguishes three kinds of commit:
 
-- **Claude-assisted.** Claude wrote or substantially edited every change in the commit. Gets an `Assisted-by: Claude <model-id>` trailer (e.g. `Assisted-by: Claude claude-opus-4-8`). The `model-id` is the lowercased model name from the current environment, no friendly name.
+- **Claude-assisted.** Claude wrote or substantially edited every change in the commit. Gets an `Assisted-by: Claude <model-id>` trailer (e.g. `Assisted-by: Claude claude-opus-5-5`). The `model-id` is the lowercased model name from the current environment, no friendly name.
 - **Human-only.** The human authored the change without Claude's involvement (typo fix, hand revision in editor, manual refactor). Gets a `Human-authored: true` trailer. No `Assisted-by:`, no `Co-Authored-By: Claude`, no `Prompts:`.
 - **Mixed.** The commit contains both Claude-touched and human-authored changes. Gets **both** `Human-authored: true` and `Assisted-by: Claude <model-id>`.
 

@@ -36,14 +36,14 @@ Each `.jsonl` file is one session. Lines are JSON objects. Records relevant here
 
 ```json
 {"type": "user",      "message": {"role": "user",      "content": "<string OR list>"}, "cwd": "...", "timestamp": "..."}
-{"type": "assistant", "message": {"role": "assistant", "content": [...], "model": "claude-opus-4-7"}, "timestamp": "..."}
+{"type": "assistant", "message": {"role": "assistant", "content": [...], "model": "claude-opus-5-5"}, "timestamp": "..."}
 ```
 
 Key field rules (verified against current session files):
 
 - `message.content` is a **string** when the user typed a real prompt. It is a **list** when the entry is a tool result (`type: tool_result` inside the list).
 - Assistant tool calls are list-form `content` with blocks of `type: tool_use` and a `name` field (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`, `Bash`, etc.). The `input.file_path` field holds the absolute path the tool acted on.
-- `message.model` is set on assistant turns and is the model ID that produced that turn (e.g. `claude-opus-4-7`).
+- `message.model` is set on assistant turns and is the model ID that produced that turn (e.g. `claude-opus-5-5`).
 - `cwd` is set on most records and is the absolute working directory at the time the entry was written.
 
 ## Candidate-session search
@@ -156,10 +156,10 @@ The `Assisted-by:` trailer must name the model that **actually produced the work
 ```python
 # inside the same scan that finds candidate sessions
 if msg.get("role") == "assistant" and model is None:
-    model = msg.get("model")  # e.g. "claude-opus-4-7"
+    model = msg.get("model")  # e.g. "claude-opus-5-5"
 ```
 
-If the candidate session is multi-model (rare but possible after `/fast` toggles or model switches), report the **first** model used. If the diff spans two candidate sessions with different models, list both in the trailer separated by a comma: `Assisted-by: Claude claude-opus-4-7, claude-sonnet-4-6`.
+If the candidate session is multi-model (rare but possible after `/fast` toggles or model switches), report the **first** model used. If the diff spans two candidate sessions with different models, list both in the trailer separated by a comma: `Assisted-by: Claude <model-id-1>, <model-id-2>`.
 
 If `model` is missing or empty (truncated or corrupt session file), do not guess. Ask the user.
 
