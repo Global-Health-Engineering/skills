@@ -180,7 +180,7 @@ If **yes**:
    ---
    id: 2026-06-02-001-tighten-abstract-intro
    timestamp: 2026-06-02T14:32:11+02:00
-   model: claude-opus-4-7
+   model: <model-id>
    files_touched:
      - manuscript/abstract.qmd
    ---
@@ -189,7 +189,7 @@ If **yes**:
    ```
 
    Notes:
-   - `model` is the model ID (lowercased, no version label suffixes). For current-session work, pull it from the environment block (`claude-opus-4-7`, `claude-sonnet-4-6`, etc.). For prior-session work, pull it from the candidate session's first assistant turn (`message.model` in the matching `.jsonl`), since the current session's environment may name a different model.
+   - `model` is the model ID (lowercased, no version label suffixes). For current-session work, copy the exact model ID from the environment block. For prior-session work, pull it from the candidate session's first assistant turn (`message.model` in the matching `.jsonl`), since the current session's environment may name a different model.
    - `files_touched` is the output of `git diff --staged --name-only` at archive time, one entry per line. On the **mixed path**, list only the files Claude actually touched, not the human-only files in the same commit. Do not let `files_touched:` claim Claude authored a file the human wrote alone.
    - The prompt body is the full user turn, unedited. Do not strip code fences. Do not collapse newlines. This is the archive copy; readability of `git log` is handled by the trailer.
    - No `commit_sha:` field. The `id` is unique and the `Prompts:` trailer in the matching commit pairs them. To find the commit for a given id, run `git log --all --grep='<id>'`. Recording a SHA in the file would require a fixed-point amend (writing the SHA you are about to compute), which is not possible.
@@ -224,7 +224,7 @@ This skill overrides one harness default: do **not** append `Co-Authored-By: Cla
 
 The `Human-authored: true` trailer is the human-side counterpart to `Assisted-by:`. It is what makes human-only work countable instead of merely "the absence of an `Assisted-by:` trailer" (which also matches legacy commits and harness commits). A mixed commit carries both trailers, so it is counted by either query and identified as mixed when it matches both.
 
-The model ID is the lowercased model name from your environment (e.g. `claude-opus-4-8`, `claude-sonnet-4-6`). Format the trailer as `Assisted-by: Claude claude-opus-4-8`. When Step 0 fell back to a prior session, use the model from that session's first assistant turn instead (see `references/prior-session-detection.md`), not your current environment. If two candidate sessions used different models, list both comma-separated.
+The model ID is the exact lowercased model ID from your environment block. Format the trailer as `Assisted-by: Claude <model-id>`. When Step 0 fell back to a prior session, use the model from that session's first assistant turn instead (see `references/prior-session-detection.md`), not your current environment. If two candidate sessions used different models, list both comma-separated.
 
 **Who runs the commit:**
 

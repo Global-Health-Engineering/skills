@@ -115,7 +115,7 @@ Bad: PR body carrying commit-level attribution.
 
 Tightens abstract.
 
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 Prompts:
 - 2026-06-02-001-tighten-abstract-intro
 ```

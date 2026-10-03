@@ -149,7 +149,7 @@ PR=$(gh pr view --json number --jq '.number')
 
 ### 5. Offer to run the Test plan
 
-Ask the user simply: "Should I run through the Test plan now?"
+Ask the user: "Should I run through the Test plan now?"
 
 If **no**: stop. The PR is done.
 

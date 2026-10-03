@@ -16,7 +16,7 @@ strings were split incorrectly. The parser now tracks nesting depth
 with a small state machine.
 
 Closes #142
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 No `prompts/` file written. The user declined the archive step (or did not engage). The `Assisted-by:` trailer still goes in: Claude wrote the fix, even though the prompts that produced it are not archived.
@@ -34,7 +34,7 @@ the end of paragraph one.
 
 Prompts:
 - 2026-06-02-001-tighten-abstract-intro
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Companion archive file `prompts/2026-06-02-001-tighten-abstract-intro.md`:
@@ -43,7 +43,7 @@ Companion archive file `prompts/2026-06-02-001-tighten-abstract-intro.md`:
 ---
 id: 2026-06-02-001-tighten-abstract-intro
 timestamp: 2026-06-02T14:32:11+02:00
-model: claude-opus-4-7
+model: claude-opus-5-5
 files_touched:
   - manuscript/abstract.qmd
 ---
@@ -68,7 +68,7 @@ Prompts:
 - 2026-06-02-002-numbered-prompt-menu
 - 2026-06-02-003-add-range-selection
 - 2026-06-02-004-add-all-none-shortcuts
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Three companion files under `prompts/`, one per prompt, in the order the prompts were given. The sequence is the design history.
@@ -96,7 +96,7 @@ and lets callers decide how to handle a missing user.
 
 Prompts:
 - 2026-06-02-005-fix-getuser-typeerror
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Companion archive file `prompts/2026-06-02-005-fix-getuser-typeerror.md`:
@@ -105,7 +105,7 @@ Companion archive file `prompts/2026-06-02-005-fix-getuser-typeerror.md`:
 ---
 id: 2026-06-02-005-fix-getuser-typeerror
 timestamp: 2026-06-02T15:07:43+02:00
-model: claude-opus-4-7
+model: claude-opus-5-5
 files_touched:
   - src/users/getUser.js
 ---
@@ -135,7 +135,7 @@ and removed three outdated screenshots.
 
 Prompts:
 - 2026-06-02-006-rewrite-quickstart-section
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 The archive file contains the full prompt body (multiple paragraphs, code blocks, the works). No truncation. If the trailer line `- 2026-06-02-006-rewrite-quickstart-section` is the only thing in `git log --oneline`, that is by design: the commit log stays short, the archive carries the long text.
@@ -171,7 +171,7 @@ changelog entry was written by hand.
 Prompts:
 - 2026-06-24-001-nested-quote-state-machine
 Human-authored: true
-Assisted-by: Claude claude-opus-4-8
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Companion archive file `prompts/2026-06-24-001-nested-quote-state-machine.md` lists **only** the Claude-touched file under `files_touched:`:
@@ -180,7 +180,7 @@ Companion archive file `prompts/2026-06-24-001-nested-quote-state-machine.md` li
 ---
 id: 2026-06-24-001-nested-quote-state-machine
 timestamp: 2026-06-24T11:20:05+02:00
-model: claude-opus-4-8
+model: claude-opus-5-5
 files_touched:
   - src/parser.js
 ---
@@ -284,7 +284,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 Fix:
 
 ```
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Bad: `Assisted-by:` trailer on a human-only commit. Miscounts human work as Claude-touched.
@@ -292,7 +292,7 @@ Bad: `Assisted-by:` trailer on a human-only commit. Miscounts human work as Clau
 ```
 docs(abstract): fix typo in conclusion sentence
 
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 ```
 
 Fix: use `Human-authored: true` on the human-only path; reserve `Assisted-by:` for commits Claude actually touched.
@@ -310,7 +310,7 @@ Fix: add `Human-authored: true`. Only genuinely Claude-touched commits omit it (
 Bad: `Assisted-by:` trailer placed before issue references (out of order).
 
 ```
-Assisted-by: Claude claude-opus-4-7
+Assisted-by: Claude claude-opus-5-5
 Closes #142
 ```
 
