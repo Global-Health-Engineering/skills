@@ -97,7 +97,7 @@ From the output, determine:
 
 - **What changed**: files, scope, whether it's one logical change or several.
 - **Whether anything is staged**: if nothing is staged but there are unstaged changes, ask whether to stage all or selectively.
-- **The current branch**: if it's `main`, `master`, `trunk`, or the repo's default, warn the user and offer to create a feature branch before committing.
+- **The current branch**: if it's `main` or the repo's default, warn the user and offer to switch to `dev` before committing, because the `open-pr` skill opens pull requests only from `dev` into `main`. A feature branch is fine only when it is created off `dev` and merged back into `dev`.
 - **Recent commit style**: match the tone/format of recent commits in this repo. If they use Conventional Commits, follow that. If they're freeform, don't impose ceremony.
 
 ### 2. Decide: one commit or several?
