@@ -100,6 +100,55 @@ From the output, determine:
 - **The current branch**: if it's `main` or the repo's default, warn the user and offer to switch to `dev` before committing, because the `open-pr` skill opens pull requests only from `dev` into `main`. A feature branch is fine only when it is created off `dev` and merged back into `dev`.
 - **Recent commit style**: match the tone/format of recent commits in this repo. If they use Conventional Commits, follow that. If they're freeform, don't impose ceremony.
 
+### 1b. Screen the diff for secrets and personal data (BLOCKING)
+
+Before deciding how to split or drafting a message, screen what is about to be
+committed. This step is mandatory and runs on every path; it is not optional
+and is not skipped for "obviously safe" changes. Two failure modes are in
+scope:
+
+- **Secrets/credentials**: API keys, tokens, `.env` files, private keys,
+  connection strings, credential files.
+- **Personal data (PII)**: data files carrying people's names, email
+  addresses, ORCID iDs, GitHub handles, phone numbers, national IDs,
+  gender/age tied to identifiable individuals, signed consent, or any
+  name-plus-attribute record. This is the class that must never enter a git
+  repository, public or private (the governed-data / "Lane 3" rule). A scan
+  for secrets alone does not catch it.
+
+**How to screen.** If `secret_scan.py` from the wiki-core skill is available on
+this machine, run it over the staged (or about-to-be-staged) files; it flags
+both credentials (BLOCKING) and PII such as email addresses (ADVISORY):
+
+```bash
+git add -N .    # so untracked files are visible to --staged, if not already staged
+python3 ~/.claude/skills/wiki-core/scripts/secret_scan.py --staged
+```
+
+Interpret the exit code:
+
+- **exit 2 (credentials/key material)**: STOP. Do not commit. Show the finding
+  and ask the user how to proceed (redact, gitignore, or remove the file).
+- **exit 1 (PII/email/national-ID shapes)**: STOP and confirm explicitly.
+  Show the affected file(s) and what was matched (never print the raw values).
+  A data file full of emails/names is almost always a mistake to commit,
+  especially in a public repo. Ask the user whether to remove it, replace it
+  with a de-identified version, or gitignore it before continuing. Only
+  proceed on an explicit "yes, commit it" for that file.
+- **exit 0**: proceed.
+
+If `secret_scan.py` is not available, do the screen by eye: look at
+`git diff --staged --name-only` and, for any `.csv`/`.xlsx`/`.json`/`.rda`/
+`.eml` or other data file, sample it for email-shaped strings and personal
+names before committing. When in doubt, treat a data file as personal data and
+ask.
+
+**Public repos raise the stakes.** If `git remote -v` shows a public host and
+the diff adds a data file, be especially conservative: personal data in public
+history is recoverable from clones and forks even after deletion, so removal
+later requires a history rewrite (`git filter-repo`) and cannot be undone by a
+plain follow-up commit. It is far cheaper to catch it here.
+
 ### 2. Decide: one commit or several?
 
 If the diff spans multiple unrelated concerns (e.g. a bug fix and a new feature and a docs update), recommend splitting. Ask the user something like:
@@ -267,7 +316,7 @@ If the user asked to "commit and open a PR", stop after the commit and hand off 
 - **Use `Co-Authored-By: Claude`.** This skill replaces the harness default with `Assisted-by: Claude <model-id>` on Claude-touched commits (Claude-assisted and mixed) and omits it entirely on human-only commits. Do not let the harness re-introduce `Co-Authored-By`. (`Human-authored: true` marks the human side; it is not a substitute for a `Co-Authored-By` naming a real human collaborator, which you may still add when one exists.)
 - **Publish `prompts/` to external services.** The directory stays in the repo. The skill does not upload it anywhere, does not post it as a gist.
 - **Truncate or paraphrase prompts in the archive.** Files in `prompts/` are verbatim copies of the user turn. The archive must be lossless so the Methods section can quote it.
-- **Commit sensitive files.** Scan the diff and `git status` for things that look like secrets (API keys, `.env`, private keys, tokens, credential files). Respect `.gitignore`: if an ignored-looking file appears as untracked-but-about-to-be-staged, flag it. Stop and ask before committing anything suspicious. This includes prompts: if a prompt to be archived under `prompts/` contains what looks like a secret, flag it and ask before writing the file.
+- **Commit sensitive files.** Step 1b screens for this on every commit and is the authoritative rule; this bullet restates the boundary. Scan the diff and `git status` for both (a) secrets (API keys, `.env`, private keys, tokens, credential files) and (b) personal data (data files with names, emails, ORCID iDs, GitHub handles, phone numbers, gender/age or other attributes tied to identifiable people). The latter must never enter git history, public or private. Respect `.gitignore`: if an ignored-looking file appears as untracked-but-about-to-be-staged, flag it. Stop and ask before committing anything suspicious. This includes prompts: if a prompt to be archived under `prompts/` contains what looks like a secret or personal data, flag it and ask before writing the file.
 
 ---
 
